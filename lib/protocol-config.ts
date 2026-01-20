@@ -24,6 +24,7 @@ export interface ProtocolConfig {
 
   ethos: {
     searchName: string
+    twitterUsername?: string // Optional Twitter username for user score lookup
   }
 
   defillama: {
@@ -48,7 +49,8 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
     displayName: "Hyperliquid",
 
     ethos: {
-      searchName: "Hyperliquid"
+      searchName: "Hyperliquid",
+      twitterUsername: "HyperliquidX"
     },
 
     defillama: {

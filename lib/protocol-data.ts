@@ -11,7 +11,7 @@
  */
 
 import { ProtocolConfig } from "@/lib/protocol-config"
-import { getEthosData, EthosProtocolData } from "@/lib/api/ethos"
+import { getEthosData, EthosProtocolData, getUserScoreFromTwitter } from "@/lib/api/ethos"
 import { getMetricFromCategory } from "@/lib/api/defillama"
 import { AssetCardProps } from "@/components/ui/asset-card"
 
@@ -53,6 +53,22 @@ export async function fetchProtocolData(
     // Fetch Ethos data (identity layer)
     const ethosData = await getEthosData(config.ethos.searchName)
 
+    // If Twitter username is configured, fetch user score from Twitter
+    let finalEthosScore = ethosData.score
+    if (config.ethos.twitterUsername) {
+      const twitterScore = await getUserScoreFromTwitter(config.ethos.twitterUsername)
+      if (twitterScore) {
+        finalEthosScore = twitterScore.score
+        console.log(
+          `Using Twitter score for ${config.displayName}: ${twitterScore.score} (${twitterScore.level})`
+        )
+      } else {
+        console.warn(
+          `Failed to fetch Twitter score for ${config.ethos.twitterUsername}, falling back to search score`
+        )
+      }
+    }
+
     // Fetch stock metric from DefiLlama
     const stockValue = await getMetricFromCategory(
       config.defillama.protocolSlug,
@@ -83,7 +99,7 @@ export async function fetchProtocolData(
     return {
       name: config.displayName,
       avatarUrl: ethosData.avatarUrl,
-      ethosScore: ethosData.score,
+      ethosScore: finalEthosScore,
       stockMetric: {
         label: config.metrics.stock.label,
         valueUsd: stockValue,
