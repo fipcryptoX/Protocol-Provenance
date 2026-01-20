@@ -10,9 +10,9 @@
  * CoinGecko provides better resolution images than DefiLlama's resized versions
  */
 export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
-  // Major chains with high-quality logos
+  // Major chains with high-quality CoinGecko logos
   "ethereum": "https://coin-images.coingecko.com/asset_platforms/images/279/large/ethereum.png",
-  "base": "https://defillama.com/chain-icons/rsz_base.jpg",
+  "base": "https://coin-images.coingecko.com/asset_platforms/images/131/large/base.png",
   "solana": "https://coin-images.coingecko.com/asset_platforms/images/5/large/solana.png",
   "tron": "https://coin-images.coingecko.com/asset_platforms/images/1094/large/TRON_LOGO.png",
   "arbitrum": "https://coin-images.coingecko.com/asset_platforms/images/33/large/arbitrum.png",

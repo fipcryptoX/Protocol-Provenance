@@ -93,7 +93,7 @@ CHAIN_LOGO_OVERRIDES = {
 
 **File:** `/lib/chain-logo-overrides.ts:15`
 ```typescript
-"base": "https://defillama.com/chain-icons/rsz_base.jpg"
+"base": "https://coin-images.coingecko.com/asset_platforms/images/131/large/base.png"
 ```
 
 **What happens:**
@@ -101,8 +101,8 @@ CHAIN_LOGO_OVERRIDES = {
 2. `getCorrectChainLogo("Base", null)` is called
 3. Normalizes to lowercase: `"base"`
 4. Finds override: `CHAIN_LOGO_OVERRIDES["base"]`
-5. Returns: `"https://defillama.com/chain-icons/rsz_base.jpg"`
-6. Console logs: `Using override logo for Base: https://defillama.com/chain-icons/rsz_base.jpg`
+5. Returns: `"https://coin-images.coingecko.com/asset_platforms/images/131/large/base.png"`
+6. Console logs: `Using override logo for Base: https://coin-images.coingecko.com/asset_platforms/images/131/large/base.png`
 
 ---
 
