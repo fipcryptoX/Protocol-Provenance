@@ -10,11 +10,23 @@
  */
 
 const ETHOS_API_BASE = "https://api.ethos.network/v1"
+const ETHOS_API_V2_BASE = "https://api.ethos.network/api/v2"
 
 export interface EthosProtocolData {
   name: string
   avatarUrl?: string
   score: number
+}
+
+export interface EthosUserScore {
+  score: number
+  level: string
+}
+
+export interface EthosUser {
+  id: number
+  username?: string
+  // Add other fields as needed
 }
 
 /**
@@ -65,5 +77,116 @@ export async function getEthosData(
       avatarUrl: undefined,
       score: 0,
     }
+  }
+}
+
+/**
+ * Get user ID from Twitter username
+ *
+ * @param twitterUsername - The Twitter username (without @)
+ * @returns User ID
+ */
+export async function getUserIdFromTwitterUsername(
+  twitterUsername: string
+): Promise<number | null> {
+  try {
+    const response = await fetch(`${ETHOS_API_V2_BASE}/users/by/x`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+      body: JSON.stringify({
+        accountIdsOrUsernames: [twitterUsername],
+      }),
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch user ID for ${twitterUsername}: ${response.status}`
+      )
+      return null
+    }
+
+    const data = await response.json()
+
+    // The API returns an array of users
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0].id || null
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching user ID for ${twitterUsername}:`, error)
+    return null
+  }
+}
+
+/**
+ * Get user score by user ID
+ *
+ * @param userId - The Ethos user ID
+ * @returns User score and level
+ */
+export async function getUserScoreByUserId(
+  userId: number
+): Promise<EthosUserScore | null> {
+  try {
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/score/userId?userId=${userId}`,
+      {
+        headers: {
+          Accept: "*/*",
+        },
+        next: { revalidate: 120 }, // 2 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch score for user ID ${userId}: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    return {
+      score: data.score || 0,
+      level: data.level || "unknown",
+    }
+  } catch (error) {
+    console.error(`Error fetching score for user ID ${userId}:`, error)
+    return null
+  }
+}
+
+/**
+ * Get user score from Twitter username (combines the two API calls)
+ *
+ * @param twitterUsername - The Twitter username (without @)
+ * @returns User score and level
+ */
+export async function getUserScoreFromTwitter(
+  twitterUsername: string
+): Promise<EthosUserScore | null> {
+  try {
+    // First, get the user ID
+    const userId = await getUserIdFromTwitterUsername(twitterUsername)
+
+    if (!userId) {
+      console.warn(`No user ID found for Twitter username: ${twitterUsername}`)
+      return null
+    }
+
+    // Then, get the score using the user ID
+    const userScore = await getUserScoreByUserId(userId)
+
+    return userScore
+  } catch (error) {
+    console.error(
+      `Error fetching user score for Twitter username ${twitterUsername}:`,
+      error
+    )
+    return null
   }
 }
