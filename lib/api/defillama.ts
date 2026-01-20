@@ -166,6 +166,38 @@ export async function getProtocolMetrics(
 }
 
 /**
+ * Fetch derivatives/perps protocol data for a specific protocol
+ *
+ * @param protocolSlug - The protocol slug (e.g., "hyperliquid")
+ * @returns Protocol derivatives data including volume and open interest
+ */
+export async function getDerivativesProtocol(
+  protocolSlug: string
+): Promise<DefiLlamaPerpProtocol | null> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/summary/derivatives/${protocolSlug}`,
+      {
+        next: { revalidate: 120 }, // 2 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch derivatives data for ${protocolSlug}: ${response.status}`
+      )
+      return null
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error(`Error fetching derivatives data for ${protocolSlug}:`, error)
+    return null
+  }
+}
+
+/**
  * Category-aware fetching for DefiLlama data
  *
  * This function fetches protocol data based on category (perps, dex, lending, bridge).
@@ -235,6 +267,29 @@ export async function getMetricFromCategory(
   fieldName: string
 ): Promise<number | null> {
   try {
+    // For perps, use the dedicated derivatives endpoint
+    if (category === "perps") {
+      const protocolData = await getDerivativesProtocol(protocolSlug)
+
+      if (!protocolData) {
+        console.warn(`Failed to fetch derivatives data for ${protocolSlug}`)
+        return null
+      }
+
+      // Extract the field value
+      const value = protocolData[fieldName]
+
+      if (typeof value !== "number") {
+        console.warn(
+          `Field ${fieldName} not found or not a number for ${protocolSlug}`
+        )
+        return null
+      }
+
+      return value
+    }
+
+    // For other categories, use the overview endpoint
     const data = await fetchDefiLlamaCategory(category)
 
     // Find the protocol in the data
