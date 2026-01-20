@@ -33,6 +33,8 @@ export interface ProtocolCardData {
     label: string
     valueUsd: number
   }
+  slug?: string
+  chains?: string[]
 }
 
 /**

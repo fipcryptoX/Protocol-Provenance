@@ -239,7 +239,9 @@ export async function buildProtocolCardData(
     flowMetric: {
       label: metricsConfig.flow.label,
       valueUsd: flowValue
-    }
+    },
+    slug: protocol.slug,
+    chains: undefined // Will be populated from protocol data if available
   }
 }
 

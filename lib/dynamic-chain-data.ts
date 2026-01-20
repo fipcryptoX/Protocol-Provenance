@@ -131,7 +131,9 @@ export async function buildChainCardData(
     flowMetric: {
       label: "24h App Revenue",
       valueUsd: flowValue
-    }
+    },
+    slug: chain.name.toLowerCase().replace(/\s+/g, '-'), // Generate slug from name
+    chains: undefined
   }
 }
 

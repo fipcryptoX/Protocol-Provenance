@@ -1,100 +1,296 @@
-/**
- * Protocol Provenance Dashboard
- *
- * Dynamic Version:
- * - Automatically fetches all protocols with TVL >= $10B from DefiLlama
- * - Automatically fetches all chains with TVL >= $4B from DefiLlama
- * - Normalizes categories and applies stock/flow pairing
- * - Fetches Ethos scores from Twitter
- * - Renders protocol and chain cards dynamically
- *
- * This is a credibility snapshot, not an analytics terminal.
- * No rankings, comparisons, charts, time ranges, or user inputs.
- */
+"use client"
 
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { AssetCard } from "@/components/ui/asset-card"
-import { buildAllProtocolCards } from "@/lib/dynamic-protocol-data"
-import { buildAllChainCards } from "@/lib/dynamic-chain-data"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { DashboardToolbar } from "@/components/dashboard-toolbar"
+import { DashboardFilters } from "@/components/dashboard-filters"
+import { DashboardStats } from "@/components/dashboard-stats"
+import { EmptyState } from "@/components/ui/empty-state"
+import { ProtocolCardSkeleton } from "@/components/ui/protocol-card-skeleton"
+import { ComparisonTray } from "@/components/comparison-tray"
+import { useDashboardStore } from "@/lib/store"
 
-export default async function Home() {
-  // Dynamically build all protocol cards from DefiLlama
-  // Filters protocols with TVL >= $10B
-  const protocolCards = await buildAllProtocolCards(10_000_000_000)
+interface ProtocolData {
+  name: string
+  avatarUrl?: string
+  ethosScore: number
+  category: string
+  tags?: string[]
+  stockMetric: { label: string; valueUsd: number }
+  flowMetric: { label: string; valueUsd: number }
+  slug?: string
+  chains?: string[]
+}
 
-  // Dynamically build all chain cards from DefiLlama
-  // Filters chains with Stablecoin MCap >= $5B
-  const chainCards = await buildAllChainCards(5_000_000_000)
+export default function Home() {
+  const [allProtocols, setAllProtocols] = useState<ProtocolData[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(30) // Initial: 30
+  const [sparklineData, setSparklineData] = useState<
+    Record<string, Array<{ date: number; value: number }>>
+  >({})
 
-  // Combine all cards
-  const allCards = [...protocolCards, ...chainCards]
+  const { filters, searchQuery, sortBy } = useDashboardStore()
+
+  // Fetch initial protocol data
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // Fetch protocols and chains in parallel
+        const [protocolsRes, chainsRes] = await Promise.all([
+          fetch("/api/protocols"),
+          fetch("/api/chains"),
+        ])
+
+        if (!protocolsRes.ok || !chainsRes.ok) {
+          throw new Error("Failed to fetch data")
+        }
+
+        const [protocolsData, chainsData] = await Promise.all([
+          protocolsRes.json(),
+          chainsRes.json(),
+        ])
+
+        // Combine and set data
+        const combined = [
+          ...(protocolsData.data || []),
+          ...(chainsData.data || []),
+        ]
+
+        setAllProtocols(combined)
+
+        // Log any missing Ethos scores
+        const missingScores = combined.filter((p: ProtocolData) => p.ethosScore === 0)
+        if (missingScores.length > 0) {
+          console.warn(
+            `⚠️ ${missingScores.length} protocols missing Ethos scores:`,
+            missingScores.map((p: ProtocolData) => p.name).join(", ")
+          )
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err)
+        setError(err instanceof Error ? err.message : "Unknown error")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Filter and sort protocols
+  const filteredAndSorted = useMemo(() => {
+    let filtered = [...allProtocols]
+
+    // Apply filters
+    if (filters.ethosMin > 0) {
+      filtered = filtered.filter((p) => p.ethosScore >= filters.ethosMin)
+    }
+    if (filters.ethosMax < Infinity) {
+      filtered = filtered.filter((p) => p.ethosScore <= filters.ethosMax)
+    }
+    if (filters.category) {
+      filtered = filtered.filter((p) => p.category === filters.category)
+    }
+    if (filters.stockMin > 0) {
+      filtered = filtered.filter((p) => p.stockMetric.valueUsd >= filters.stockMin)
+    }
+    if (filters.stockMax < Infinity) {
+      filtered = filtered.filter((p) => p.stockMetric.valueUsd <= filters.stockMax)
+    }
+    if (filters.flowMin > 0) {
+      filtered = filtered.filter((p) => p.flowMetric.valueUsd >= filters.flowMin)
+    }
+    if (filters.flowMax < Infinity) {
+      filtered = filtered.filter((p) => p.flowMetric.valueUsd <= filters.flowMax)
+    }
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.category.toLowerCase().includes(query) ||
+          (p.chains && p.chains.some((chain) => chain.toLowerCase().includes(query)))
+      )
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case "ethos-desc":
+        filtered.sort((a, b) => b.ethosScore - a.ethosScore)
+        break
+      case "ethos-asc":
+        filtered.sort((a, b) => a.ethosScore - b.ethosScore)
+        break
+      case "category":
+        filtered.sort((a, b) => a.category.localeCompare(b.category))
+        break
+      case "stock-desc":
+        filtered.sort((a, b) => b.stockMetric.valueUsd - a.stockMetric.valueUsd)
+        break
+      case "flow-desc":
+        filtered.sort((a, b) => b.flowMetric.valueUsd - a.flowMetric.valueUsd)
+        break
+      default:
+        break
+    }
+
+    return filtered
+  }, [allProtocols, filters, searchQuery, sortBy])
+
+  // Protocols to display (with infinite scroll limit)
+  const displayedProtocols = filteredAndSorted.slice(0, visibleCount)
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
+        visibleCount < filteredAndSorted.length
+      ) {
+        setVisibleCount((prev) => Math.min(prev + 15, filteredAndSorted.length))
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [visibleCount, filteredAndSorted.length])
+
+  // Reset visible count when filters/search changes
+  useEffect(() => {
+    setVisibleCount(30)
+  }, [filters, searchQuery, sortBy])
+
+  // Lazy load sparkline data
+  const loadSparklineData = useCallback(async (protocolName: string, slug?: string) => {
+    if (!slug || sparklineData[protocolName]) return
+
+    try {
+      const res = await fetch(`/api/protocol/history?slug=${slug}&metric=tvl`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.data.length > 0) {
+          setSparklineData((prev) => ({
+            ...prev,
+            [protocolName]: data.data,
+          }))
+        }
+      }
+    } catch (err) {
+      console.warn(`Failed to load sparkline for ${protocolName}:`, err)
+    }
+  }, [sparklineData])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-              Protocol Provenance
-            </h1>
-            <p className="text-lg text-slate-600">
-              DeFi sensemaking through belief and behavior
-            </p>
-          </div>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto">
+        {/* Header */}
+        <div className="text-center py-12 px-4">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Protocol Provenance
+          </h1>
+          <p className="text-lg text-muted-foreground mt-2">
+            DeFi sensemaking through belief and behavior
+          </p>
+        </div>
 
-          {/* Protocol and Chain Cards */}
-          {allCards.length > 0 ? (
+        {/* Toolbar (Search + Sort + Theme Toggle) */}
+        <DashboardToolbar />
+
+        {/* Filters */}
+        <DashboardFilters />
+
+        {/* Stats */}
+        <DashboardStats
+          totalCount={allProtocols.length}
+          filteredCount={filteredAndSorted.length}
+          isLoading={isLoading}
+        />
+
+        {/* Main Content */}
+        <div className="px-4 py-8">
+          {isLoading ? (
+            // Loading skeletons
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allCards.map((card) => (
+              {Array.from({ length: 9 }).map((_, i) => (
+                <ProtocolCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : error ? (
+            // Error state
+            <div className="text-center py-16">
+              <p className="text-destructive">Error: {error}</p>
+            </div>
+          ) : displayedProtocols.length === 0 ? (
+            // Empty state
+            <EmptyState />
+          ) : (
+            // Protocol cards
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayedProtocols.map((protocol) => (
                 <AssetCard
-                  key={card.name}
-                  name={card.name}
-                  avatarUrl={card.avatarUrl}
-                  ethosScore={card.ethosScore}
-                  category={card.category}
-                  tags={card.tags}
-                  stockMetric={card.stockMetric}
-                  flowMetric={card.flowMetric}
+                  key={protocol.name}
+                  name={protocol.name}
+                  avatarUrl={protocol.avatarUrl}
+                  ethosScore={protocol.ethosScore}
+                  category={protocol.category}
+                  tags={protocol.tags}
+                  stockMetric={protocol.stockMetric}
+                  flowMetric={protocol.flowMetric}
+                  sparklineData={sparklineData[protocol.name]}
+                  onVisible={() => loadSparklineData(protocol.name, protocol.slug)}
                 />
               ))}
             </div>
-          ) : (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Data Found</AlertTitle>
-              <AlertDescription>
-                No protocols or chains found or failed to load data.
-              </AlertDescription>
-            </Alert>
           )}
 
-          {/* Footer */}
-          <div className="text-center text-sm text-slate-500">
-            <p>
-              Data from{" "}
-              <a
-                href="https://ethos.network"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-slate-700"
-              >
-                Ethos
-              </a>{" "}
-              and{" "}
-              <a
-                href="https://defillama.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-slate-700"
-              >
-                DefiLlama
-              </a>
-            </p>
-          </div>
+          {/* Loading more indicator */}
+          {!isLoading &&
+            visibleCount < filteredAndSorted.length && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  Scroll for more protocols...
+                </p>
+              </div>
+            )}
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-sm text-muted-foreground py-8 px-4">
+          <p>
+            Data from{" "}
+            <a
+              href="https://ethos.network"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              Ethos
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://defillama.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              DefiLlama
+            </a>
+          </p>
         </div>
       </div>
+
+      {/* Comparison Tray (fixed at bottom) */}
+      <ComparisonTray protocols={allProtocols} />
+
+      {/* Bottom padding to account for comparison tray */}
+      <div className="h-24" />
     </div>
   )
 }
