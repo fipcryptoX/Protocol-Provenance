@@ -32,6 +32,7 @@ export interface EthosUser {
 /**
  * Get Ethos data for a protocol by search name
  *
+ * @deprecated This uses the deprecated v1 API. Use getUserScoreFromTwitter instead with v2 API.
  * @param searchName - The protocol name to search for
  * @returns Ethos protocol data including name, avatar, and score
  */

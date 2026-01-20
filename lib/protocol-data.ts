@@ -11,7 +11,7 @@
  */
 
 import { ProtocolConfig } from "@/lib/protocol-config"
-import { getEthosData, EthosProtocolData, getUserScoreFromTwitter } from "@/lib/api/ethos"
+import { getUserScoreFromTwitter } from "@/lib/api/ethos"
 import { getMetricFromCategory } from "@/lib/api/defillama"
 import { AssetCardProps } from "@/components/ui/asset-card"
 
@@ -50,9 +50,8 @@ export async function fetchProtocolData(
   config: ProtocolConfig
 ): Promise<ProtocolCardData> {
   try {
-    // If Twitter username is configured, fetch user score from Twitter
+    // Fetch Ethos score from Twitter using v2 API
     let finalEthosScore = 0
-    let avatarUrl: string | undefined = undefined
 
     if (config.ethos.twitterUsername) {
       const twitterScore = await getUserScoreFromTwitter(config.ethos.twitterUsername)
@@ -61,14 +60,15 @@ export async function fetchProtocolData(
         console.log(
           `Using Twitter score for ${config.displayName}: ${twitterScore.score} (${twitterScore.level})`
         )
+      } else {
+        console.warn(
+          `Failed to fetch Twitter score for ${config.ethos.twitterUsername}`
+        )
       }
-    }
-
-    // If we didn't get a score from Twitter, try the search API
-    if (finalEthosScore === 0) {
-      const ethosData = await getEthosData(config.ethos.searchName)
-      finalEthosScore = ethosData.score
-      avatarUrl = ethosData.avatarUrl
+    } else {
+      console.warn(
+        `No Twitter username configured for ${config.displayName}, score will be 0`
+      )
     }
 
     // Fetch stock metric from DefiLlama
@@ -100,7 +100,7 @@ export async function fetchProtocolData(
     // Return normalized data contract
     return {
       name: config.displayName,
-      avatarUrl: avatarUrl,
+      avatarUrl: undefined, // Avatar can be added via v2 API if needed later
       ethosScore: finalEthosScore,
       stockMetric: {
         label: config.metrics.stock.label,
