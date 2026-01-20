@@ -166,6 +166,34 @@ export async function getProtocolMetrics(
 }
 
 /**
+ * Fetch open interest data from DefiLlama
+ *
+ * @returns Array of protocols with open interest data
+ */
+export async function getOpenInterestData(): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/overview/open-interest`,
+      {
+        next: { revalidate: 120 }, // 2 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch open interest data: ${response.status}`)
+      return []
+    }
+
+    const data = await response.json()
+    // The API returns an object with protocols array
+    return data.protocols || []
+  } catch (error) {
+    console.error(`Error fetching open interest data:`, error)
+    return []
+  }
+}
+
+/**
  * Fetch derivatives/perps protocol data for a specific protocol
  *
  * @param protocolSlug - The protocol slug (e.g., "hyperliquid")
@@ -267,7 +295,39 @@ export async function getMetricFromCategory(
   fieldName: string
 ): Promise<number | null> {
   try {
-    // For perps, use the dedicated derivatives endpoint
+    // For open interest metrics, use the open interest endpoint
+    if (fieldName === "dailyOpenInterest" || fieldName === "openInterest") {
+      const protocols = await getOpenInterestData()
+
+      // Find the protocol by displayName (try both "Hyperliquid Perps" and "Hyperliquid")
+      const protocolData = protocols.find(
+        (p: any) =>
+          p.displayName?.toLowerCase() === "hyperliquid perps" ||
+          p.displayName?.toLowerCase() === "hyperliquid" ||
+          p.name?.toLowerCase() === protocolSlug.toLowerCase()
+      )
+
+      if (!protocolData) {
+        console.warn(
+          `Protocol ${protocolSlug} not found in open interest data`
+        )
+        return null
+      }
+
+      // Extract the field value (use total24h for 24h open interest)
+      const value = protocolData.total24h || protocolData.dailyOpenInterest || protocolData.openInterest
+
+      if (typeof value !== "number") {
+        console.warn(
+          `Open interest field not found or not a number for ${protocolSlug}`
+        )
+        return null
+      }
+
+      return value
+    }
+
+    // For perps volume metrics, use the dedicated derivatives endpoint
     if (category === "perps") {
       const protocolData = await getDerivativesProtocol(protocolSlug)
 
