@@ -26,7 +26,24 @@ export interface EthosUserScore {
 export interface EthosUser {
   id: number
   username?: string
+  avatarUrl?: string
+  displayName?: string
+  score?: number
   // Add other fields as needed
+}
+
+export interface EthosProject {
+  id: number
+  userkey: string
+  status: string
+  description?: string
+  user: EthosUser
+  // Add other fields as needed
+}
+
+export interface EthosProjectsResponse {
+  projects: EthosProject[]
+  total: number
 }
 
 /**
@@ -186,6 +203,57 @@ export async function getUserScoreFromTwitter(
   } catch (error) {
     console.error(
       `Error fetching user score for Twitter username ${twitterUsername}:`,
+      error
+    )
+    return null
+  }
+}
+
+/**
+ * Get avatar URL from Ethos projects API
+ *
+ * @param projectName - The project name to search for (e.g., "Hyperliquid")
+ * @returns Avatar URL or null if not found
+ */
+export async function getProjectAvatarUrl(
+  projectName: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${ETHOS_API_V2_BASE}/projects`, {
+      headers: {
+        Accept: "*/*",
+      },
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch projects from Ethos: ${response.status}`
+      )
+      return null
+    }
+
+    const data: EthosProjectsResponse = await response.json()
+
+    // Find the project by userkey or user display name
+    const project = data.projects.find(
+      (p) =>
+        p.userkey?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.displayName?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.username?.toLowerCase() === projectName.toLowerCase()
+    )
+
+    if (!project || !project.user?.avatarUrl) {
+      console.warn(
+        `No avatar URL found for project: ${projectName}`
+      )
+      return null
+    }
+
+    return project.user.avatarUrl
+  } catch (error) {
+    console.error(
+      `Error fetching avatar URL for ${projectName}:`,
       error
     )
     return null
