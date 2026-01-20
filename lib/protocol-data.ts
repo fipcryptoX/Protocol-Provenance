@@ -2,7 +2,7 @@
  * Protocol Data Normalization Layer
  *
  * This module is responsible for:
- * 1. Fetching data from Ethos and DefiLlama based on protocol configuration
+ * 1. Fetching data from Ethos, DefiLlama, and protocol-specific APIs
  * 2. Normalizing the data into the ProtocolCardData contract
  * 3. Handling errors and providing explicit error states
  *
@@ -11,9 +11,12 @@
  */
 
 import { ProtocolConfig } from "@/lib/protocol-config"
-import { getEthosData, EthosProtocolData } from "@/lib/api/ethos"
+import { getEthosData } from "@/lib/api/ethos"
 import { getMetricFromCategory } from "@/lib/api/defillama"
-import { AssetCardProps } from "@/components/ui/asset-card"
+import {
+  getHyperliquidTotalOpenInterest,
+  getHyperliquid24hVolume,
+} from "@/lib/api/hyperliquid"
 
 /**
  * Normalized protocol data contract for the UI
@@ -34,11 +37,44 @@ export interface ProtocolCardData {
 }
 
 /**
+ * Fetch a metric value based on source configuration
+ */
+async function fetchMetricValue(
+  source: "defillama" | "hyperliquid",
+  field: string,
+  protocolSlug?: string,
+  category?: string
+): Promise<number> {
+  if (source === "hyperliquid") {
+    // Use Hyperliquid's own API
+    if (field === "totalOpenInterest") {
+      return await getHyperliquidTotalOpenInterest()
+    } else if (field === "total24hVolume") {
+      return await getHyperliquid24hVolume()
+    } else {
+      throw new Error(`Unknown Hyperliquid field: ${field}`)
+    }
+  } else if (source === "defillama") {
+    // Use DefiLlama API
+    if (!protocolSlug || !category) {
+      throw new Error("DefiLlama source requires protocolSlug and category")
+    }
+    const value = await getMetricFromCategory(protocolSlug, category as any, field)
+    if (value === null) {
+      throw new Error(`Failed to fetch ${field} from DefiLlama`)
+    }
+    return value
+  } else {
+    throw new Error(`Unknown metric source: ${source}`)
+  }
+}
+
+/**
  * Fetch and normalize protocol data based on configuration
  *
  * This function:
  * - Fetches Ethos identity data (name, avatar, score)
- * - Fetches DefiLlama metrics based on category and field configuration
+ * - Fetches metrics from configured sources (DefiLlama, Hyperliquid, etc.)
  * - Normalizes everything into ProtocolCardData contract
  * - Throws explicit errors if data cannot be fetched
  *
@@ -53,31 +89,21 @@ export async function fetchProtocolData(
     // Fetch Ethos data (identity layer)
     const ethosData = await getEthosData(config.ethos.searchName)
 
-    // Fetch stock metric from DefiLlama
-    const stockValue = await getMetricFromCategory(
+    // Fetch stock metric from configured source
+    const stockValue = await fetchMetricValue(
+      config.metrics.stock.source,
+      config.metrics.stock.field,
       config.defillama.protocolSlug,
-      config.defillama.category,
-      config.metrics.stock.field
+      config.defillama.category
     )
 
-    if (stockValue === null) {
-      throw new Error(
-        `Failed to fetch stock metric (${config.metrics.stock.field}) for ${config.displayName}`
-      )
-    }
-
-    // Fetch flow metric from DefiLlama
-    const flowValue = await getMetricFromCategory(
+    // Fetch flow metric from configured source
+    const flowValue = await fetchMetricValue(
+      config.metrics.flow.source,
+      config.metrics.flow.field,
       config.defillama.protocolSlug,
-      config.defillama.category,
-      config.metrics.flow.field
+      config.defillama.category
     )
-
-    if (flowValue === null) {
-      throw new Error(
-        `Failed to fetch flow metric (${config.metrics.flow.field}) for ${config.displayName}`
-      )
-    }
 
     // Return normalized data contract
     return {

@@ -11,10 +11,11 @@
  */
 
 export type DefiLlamaCategory = "perps" | "dex" | "lending" | "bridge"
+export type MetricSource = "defillama" | "hyperliquid"
 
 export interface MetricConfig {
   label: string
-  source: "defillama"
+  source: MetricSource
   field: string
 }
 
@@ -59,13 +60,13 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
     metrics: {
       stock: {
         label: "Open Interest",
-        source: "defillama",
-        field: "openInterest"
+        source: "hyperliquid",
+        field: "totalOpenInterest"
       },
       flow: {
         label: "24h Perp Volume",
-        source: "defillama",
-        field: "total24h"
+        source: "hyperliquid",
+        field: "total24hVolume"
       }
     }
   }

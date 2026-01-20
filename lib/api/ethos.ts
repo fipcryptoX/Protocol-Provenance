@@ -27,9 +27,11 @@ export async function getEthosData(
   searchName: string
 ): Promise<EthosProtocolData> {
   try {
-    // Search for the protocol
+    // Ethos API v2 endpoint - search by name/target
+    // Note: The exact endpoint for protocol/target search is not documented publicly
+    // Using a fallback approach with reasonable defaults
     const response = await fetch(
-      `${ETHOS_API_BASE}/search?query=${encodeURIComponent(searchName)}&type=target`,
+      `https://api.ethos.network/api/v2/users/search?query=${encodeURIComponent(searchName)}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -45,21 +47,22 @@ export async function getEthosData(
 
     const data = await response.json()
 
-    // Extract the first result (assuming search returns array)
-    const result = Array.isArray(data) ? data[0] : data
+    // Extract the first result
+    const result = Array.isArray(data) ? data[0] : data?.results?.[0] || data
 
     if (!result) {
       throw new Error(`No Ethos data found for ${searchName}`)
     }
 
     return {
-      name: result.name || searchName,
-      avatarUrl: result.avatar || result.image || result.profileImage || undefined,
-      score: result.score || result.ethosScore || 0,
+      name: result.name || result.displayName || searchName,
+      avatarUrl: result.avatar || result.image || result.profileImage || result.avatarUrl || undefined,
+      score: result.score || result.credibilityScore || result.ethosScore || 0,
     }
   } catch (error) {
     console.error(`Error fetching Ethos data for ${searchName}:`, error)
     // Return fallback data when API fails
+    // TODO: Update this once the correct Ethos endpoint is confirmed
     return {
       name: searchName,
       avatarUrl: undefined,
