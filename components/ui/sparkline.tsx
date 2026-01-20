@@ -9,17 +9,25 @@ interface SparklineProps {
 }
 
 export function Sparkline({ data, isLoading }: SparklineProps) {
+  // Show skeleton while loading or if no data
   if (isLoading || !data || data.length === 0) {
     return <Skeleton className="h-12 w-full" />
   }
 
-  // Transform data for Recharts
-  const chartData = data.map((point) => ({
-    value: point.value,
-  }))
+  // Filter out invalid data points and transform for Recharts
+  const chartData = data
+    .filter((point) => point && typeof point.value === 'number' && !isNaN(point.value))
+    .map((point) => ({
+      value: point.value,
+    }))
+
+  // If all data was filtered out, show skeleton
+  if (chartData.length === 0) {
+    return <Skeleton className="h-12 w-full" />
+  }
 
   // Determine line color based on trend (first vs last value)
-  const isPositive = data[data.length - 1].value >= data[0].value
+  const isPositive = chartData[chartData.length - 1].value >= chartData[0].value
   const lineColor = isPositive ? "hsl(var(--chart-1))" : "hsl(var(--chart-3))"
 
   return (

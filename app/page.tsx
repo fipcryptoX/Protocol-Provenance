@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { AssetCard } from "@/components/ui/asset-card"
 import { DashboardToolbar } from "@/components/dashboard-toolbar"
 import { DashboardFilters } from "@/components/dashboard-filters"
@@ -167,25 +167,45 @@ export default function Home() {
     setVisibleCount(30)
   }, [filters, searchQuery, sortBy])
 
+  // Track which protocols we've started loading to prevent duplicates
+  const loadingRef = useRef<Set<string>>(new Set())
+
   // Lazy load sparkline data
   const loadSparklineData = useCallback(async (protocolName: string, slug?: string) => {
-    if (!slug || sparklineData[protocolName]) return
+    if (!slug) {
+      console.warn(`No slug provided for ${protocolName}, skipping sparkline`)
+      return
+    }
+
+    // Check if already loading or loaded
+    if (loadingRef.current.has(protocolName)) {
+      return
+    }
+
+    // Mark as loading
+    loadingRef.current.add(protocolName)
+    console.log(`Loading sparkline for ${protocolName} (slug: ${slug})`)
 
     try {
       const res = await fetch(`/api/protocol/history?slug=${slug}&metric=tvl`)
       if (res.ok) {
         const data = await res.json()
         if (data.success && data.data.length > 0) {
+          console.log(`✅ Loaded ${data.data.length} data points for ${protocolName}`)
           setSparklineData((prev) => ({
             ...prev,
             [protocolName]: data.data,
           }))
+        } else {
+          console.warn(`⚠️ No historical data available for ${protocolName}`)
         }
+      } else {
+        console.warn(`❌ Failed to fetch sparkline for ${protocolName}: ${res.status}`)
       }
     } catch (err) {
-      console.warn(`Failed to load sparkline for ${protocolName}:`, err)
+      console.error(`❌ Error loading sparkline for ${protocolName}:`, err)
     }
-  }, [sparklineData])
+  }, []) // Empty deps - callback never changes
 
   return (
     <div className="min-h-screen bg-background">
