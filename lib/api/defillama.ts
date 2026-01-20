@@ -338,20 +338,39 @@ export async function getMetricFromCategory(
     if (fieldName === "dailyOpenInterest" || fieldName === "openInterest") {
       const protocols = await getOpenInterestData()
 
-      // Find the protocol by displayName (try both "Hyperliquid Perps" and "Hyperliquid")
-      const protocolData = protocols.find(
-        (p: any) =>
-          p.displayName?.toLowerCase() === "hyperliquid perps" ||
-          p.displayName?.toLowerCase() === "hyperliquid" ||
-          p.name?.toLowerCase() === protocolSlug.toLowerCase()
-      )
+      console.log(`Searching for ${protocolSlug} in open interest data...`)
+
+      // Find the protocol by name or displayName matching the slug
+      const protocolData = protocols.find((p: any) => {
+        const slug = protocolSlug.toLowerCase()
+        const name = p.name?.toLowerCase() || ""
+        const displayName = p.displayName?.toLowerCase() || ""
+
+        // Match by exact name, displayName, or if displayName contains the slug
+        return (
+          name === slug ||
+          displayName === slug ||
+          displayName.includes(slug) ||
+          displayName === `${slug} perps`
+        )
+      })
 
       if (!protocolData) {
         console.warn(
           `Protocol ${protocolSlug} not found in open interest data`
         )
+        // Log available protocols for debugging
+        console.log(
+          `Available protocols (first 10):`,
+          protocols.slice(0, 10).map(p => ({
+            name: p.name,
+            displayName: p.displayName
+          }))
+        )
         return null
       }
+
+      console.log(`Found protocol: ${protocolData.displayName || protocolData.name}`)
 
       // Extract the field value (use total24h for 24h open interest)
       const value = protocolData.total24h || protocolData.dailyOpenInterest || protocolData.openInterest
@@ -363,6 +382,7 @@ export async function getMetricFromCategory(
         return null
       }
 
+      console.log(`Open interest for ${protocolSlug}: ${value}`)
       return value
     }
 
