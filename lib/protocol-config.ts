@@ -60,12 +60,12 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
 
     metrics: {
       stock: {
-        label: "Open Interest",
+        label: "7d Volume",
         source: "defillama",
-        field: "openInterest"
+        field: "total7d"
       },
       flow: {
-        label: "24h Perp Volume",
+        label: "24h Volume",
         source: "defillama",
         field: "total24h"
       }
