@@ -10,9 +10,9 @@
  * CoinGecko provides better resolution images than DefiLlama's resized versions
  */
 export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
-  // Major chains with high-quality CoinGecko logos
+  // Major chains with high-quality logos
   "ethereum": "https://coin-images.coingecko.com/asset_platforms/images/279/large/ethereum.png",
-  "base": "https://coin-images.coingecko.com/asset_platforms/images/131/large/base.png",
+  "base": "https://defillama.com/chain-icons/rsz_base.jpg",
   "solana": "https://coin-images.coingecko.com/asset_platforms/images/5/large/solana.png",
   "tron": "https://coin-images.coingecko.com/asset_platforms/images/1094/large/TRON_LOGO.png",
   "arbitrum": "https://coin-images.coingecko.com/asset_platforms/images/33/large/arbitrum.png",
@@ -29,18 +29,23 @@ export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
 export function getCorrectChainLogo(chainName: string, fallbackLogo: string | null): string | null {
   const normalizedName = chainName.toLowerCase()
 
-  // Check if there's a high-quality CoinGecko logo
+  // Check if there's a high-quality override logo
   if (CHAIN_LOGO_OVERRIDES[normalizedName]) {
-    return CHAIN_LOGO_OVERRIDES[normalizedName]
+    const overrideUrl = CHAIN_LOGO_OVERRIDES[normalizedName]
+    console.log(`Using override logo for ${chainName}: ${overrideUrl}`)
+    return overrideUrl
   }
 
   // If DefiLlama provided a logo, use it
   if (fallbackLogo) {
+    console.log(`Using DefiLlama logo for ${chainName}: ${fallbackLogo}`)
     return fallbackLogo
   }
 
   // Auto-generate logo URL from DefiLlama CDN as fallback
-  // Format: https://icons.llamao.fi/icons/chains/rsz_[chainname].jpg
+  // Format: https://defillama.com/chain-icons/rsz_[chainname].jpg
   const formattedName = chainName.toLowerCase().replace(/\s+/g, '')
-  return `https://icons.llamao.fi/icons/chains/rsz_${formattedName}.jpg`
+  const generatedUrl = `https://defillama.com/chain-icons/rsz_${formattedName}.jpg`
+  console.log(`Using generated logo for ${chainName}: ${generatedUrl}`)
+  return generatedUrl
 }

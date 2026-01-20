@@ -111,11 +111,21 @@ export function AssetCard({
               {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
             </div>
             {avatarUrl && (
-              <div className="h-12 w-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
+              <div className="h-12 w-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
                 <img
                   src={avatarUrl}
                   alt={`${name} logo`}
                   className="h-full w-full object-cover"
+                  onError={(e) => {
+                    console.warn(`Failed to load logo for ${name}: ${avatarUrl}`)
+                    // Hide the broken image
+                    e.currentTarget.style.display = 'none'
+                    // Show fallback text
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      parent.innerHTML = `<span class="text-xs font-semibold text-muted-foreground">${name.substring(0, 2).toUpperCase()}</span>`
+                    }
+                  }}
                 />
               </div>
             )}
