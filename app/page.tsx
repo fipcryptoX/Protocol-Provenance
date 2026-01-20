@@ -1,96 +1,109 @@
-"use client";
+/**
+ * Protocol Provenance Dashboard
+ *
+ * v0 Scope:
+ * - Displays a single protocol card (Hyperliquid)
+ * - Uses live production APIs (Ethos + DefiLlama)
+ * - Stock-flow pairing enforced
+ * - Architecturally supports multiple protocols via configuration
+ *
+ * This is a credibility snapshot, not an analytics terminal.
+ * No rankings, comparisons, charts, time ranges, or user inputs.
+ */
 
-import { useState, useMemo } from "react";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { ProtocolCard } from "@/components/protocol-card";
-import { Filters } from "@/components/filters";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { mockProtocols } from "@/lib/mock-data";
-import { Protocol, SortOption } from "@/types";
+import { AssetCard } from "@/components/ui/asset-card"
+import { getProtocolConfig } from "@/lib/protocol-config"
+import { fetchProtocolDataSafe } from "@/lib/protocol-data"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
-export default function Home() {
-  const [protocols] = useState<Protocol[]>(mockProtocols);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("ethos");
-  const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
+export default async function Home() {
+  // Get Hyperliquid configuration
+  const hyperliquidConfig = getProtocolConfig("hyperliquid")
 
-  // Filter and sort protocols
-  const filteredAndSortedProtocols = useMemo(() => {
-    let filtered = [...protocols];
+  if (!hyperliquidConfig) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Configuration Error</AlertTitle>
+          <AlertDescription>
+            Hyperliquid protocol configuration not found
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.category.toLowerCase().includes(query) ||
-          p.description?.toLowerCase().includes(query)
-      );
-    }
+  // Fetch live data from Ethos and DefiLlama
+  const protocolData = await fetchProtocolDataSafe(hyperliquidConfig)
 
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "ethos":
-          return b.ethos.score - a.ethos.score;
-        case "stock":
-          return b.metrics.stock.value - a.metrics.stock.value;
-        case "flow":
-          return b.metrics.flow.value - a.metrics.flow.value;
-        case "name":
-          return a.name.localeCompare(b.name);
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [protocols, searchQuery, sortBy]);
+  // Handle error state
+  if (!protocolData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Data Fetch Error</AlertTitle>
+          <AlertDescription>
+            Failed to fetch live data for {hyperliquidConfig.displayName}.
+            Please check the API endpoints and try again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <Filters
-          onSearchChange={setSearchQuery}
-          onSortChange={setSortBy}
-          currentSort={sortBy}
-        />
-
-        {/* Protocol Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredAndSortedProtocols.map((protocol) => (
-            <ProtocolCard
-              key={protocol.id}
-              protocol={protocol}
-              onClick={() => setSelectedProtocol(protocol)}
-            />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredAndSortedProtocols.length === 0 && (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-900">
-                No protocols found
-              </p>
-              <p className="mt-2 text-sm text-gray-500">
-                Try adjusting your search or filters
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-2xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900">
+              Protocol Provenance
+            </h1>
+            <p className="text-lg text-slate-600">
+              DeFi sensemaking through belief and behavior
+            </p>
           </div>
-        )}
 
-        {/* Floating Action Button */}
-        <Button
-          size="icon"
-          className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
+          {/* Protocol Card */}
+          <div className="flex justify-center">
+            <AssetCard
+              name={protocolData.name}
+              avatarUrl={protocolData.avatarUrl}
+              ethosScore={protocolData.ethosScore}
+              stockMetric={protocolData.stockMetric}
+              flowMetric={protocolData.flowMetric}
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="text-center text-sm text-slate-500">
+            <p>
+              Data from{" "}
+              <a
+                href="https://ethos.network"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-700"
+              >
+                Ethos
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://defillama.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-700"
+              >
+                DefiLlama
+              </a>
+            </p>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
-  );
+    </div>
+  )
 }
