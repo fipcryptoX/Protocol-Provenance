@@ -235,6 +235,8 @@ export async function getProjectAvatarUrl(
 
     const data: EthosProjectsResponse = await response.json()
 
+    console.log(`Searching for project: ${projectName} among ${data.projects.length} projects`)
+
     // Find the project by userkey or user display name
     const project = data.projects.find(
       (p) =>
@@ -243,13 +245,30 @@ export async function getProjectAvatarUrl(
         p.user?.username?.toLowerCase() === projectName.toLowerCase()
     )
 
-    if (!project || !project.user?.avatarUrl) {
+    if (!project) {
+      console.warn(
+        `Project ${projectName} not found in projects list`
+      )
+      // Log available project names for debugging
+      console.log(
+        `Available projects:`,
+        data.projects.slice(0, 10).map(p => ({
+          userkey: p.userkey,
+          displayName: p.user?.displayName,
+          username: p.user?.username
+        }))
+      )
+      return null
+    }
+
+    if (!project.user?.avatarUrl) {
       console.warn(
         `No avatar URL found for project: ${projectName}`
       )
       return null
     }
 
+    console.log(`Avatar URL found for ${projectName}: ${project.user.avatarUrl}`)
     return project.user.avatarUrl
   } catch (error) {
     console.error(
