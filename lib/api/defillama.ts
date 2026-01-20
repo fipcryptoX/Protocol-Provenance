@@ -96,6 +96,45 @@ export async function getProtocol(slug: string): Promise<DefiLlamaProtocol | nul
   }
 }
 
+/**
+ * Get protocol logo URL from DefiLlama
+ *
+ * @param protocolSlug - The protocol slug (e.g., "hyperliquid")
+ * @returns Logo URL or null if not found
+ */
+export async function getProtocolLogo(
+  protocolSlug: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${DEFILLAMA_API_BASE}/protocol/${protocolSlug}`, {
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch protocol ${protocolSlug} from DefiLlama: ${response.status}`
+      )
+      return null
+    }
+
+    const data = await response.json()
+
+    if (!data.logo) {
+      console.warn(`No logo found for protocol: ${protocolSlug}`)
+      return null
+    }
+
+    console.log(`Logo URL found for ${protocolSlug}: ${data.logo}`)
+    return data.logo
+  } catch (error) {
+    console.error(
+      `Error fetching logo for ${protocolSlug}:`,
+      error
+    )
+    return null
+  }
+}
+
 export async function getProtocolRevenue(protocolName: string): Promise<number> {
   try {
     // DefiLlama fees/revenue endpoint

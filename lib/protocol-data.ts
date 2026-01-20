@@ -11,8 +11,8 @@
  */
 
 import { ProtocolConfig } from "@/lib/protocol-config"
-import { getUserScoreFromTwitter, getProjectAvatarUrl } from "@/lib/api/ethos"
-import { getMetricFromCategory } from "@/lib/api/defillama"
+import { getUserScoreFromTwitter } from "@/lib/api/ethos"
+import { getMetricFromCategory, getProtocolLogo } from "@/lib/api/defillama"
 import { AssetCardProps } from "@/components/ui/asset-card"
 
 /**
@@ -71,8 +71,8 @@ export async function fetchProtocolData(
       )
     }
 
-    // Fetch avatar URL from Ethos projects API
-    const avatarUrl = await getProjectAvatarUrl(config.displayName)
+    // Fetch logo URL from DefiLlama
+    const avatarUrl = await getProtocolLogo(config.defillama.protocolSlug)
 
     // Fetch stock metric from DefiLlama
     const stockValue = await getMetricFromCategory(
