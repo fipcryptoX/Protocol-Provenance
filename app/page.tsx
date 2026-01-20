@@ -18,46 +18,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
-  // Get Hyperliquid configuration
+  // Get protocol configurations
   const hyperliquidConfig = getProtocolConfig("hyperliquid")
+  const lighterConfig = getProtocolConfig("lighter")
 
-  if (!hyperliquidConfig) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Configuration Error</AlertTitle>
-          <AlertDescription>
-            Hyperliquid protocol configuration not found
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  // Fetch live data from Ethos and DefiLlama
-  const protocolData = await fetchProtocolDataSafe(hyperliquidConfig)
-
-  // Handle error state
-  if (!protocolData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Data Fetch Error</AlertTitle>
-          <AlertDescription>
-            Failed to fetch live data for {hyperliquidConfig.displayName}.
-            Please check the API endpoints and try again.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+  // Fetch live data from Ethos and DefiLlama for both protocols
+  const [hyperliquidData, lighterData] = await Promise.all([
+    hyperliquidConfig ? fetchProtocolDataSafe(hyperliquidConfig) : null,
+    lighterConfig ? fetchProtocolDataSafe(lighterConfig) : null,
+  ])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="text-4xl font-bold tracking-tight text-slate-900">
@@ -68,16 +42,51 @@ export default async function Home() {
             </p>
           </div>
 
-          {/* Protocol Card */}
-          <div className="flex justify-center">
-            <AssetCard
-              name={protocolData.name}
-              avatarUrl={protocolData.avatarUrl}
-              ethosScore={protocolData.ethosScore}
-              stockMetric={protocolData.stockMetric}
-              flowMetric={protocolData.flowMetric}
-            />
+          {/* Protocol Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Hyperliquid Card */}
+            {hyperliquidData && (
+              <AssetCard
+                name={hyperliquidData.name}
+                avatarUrl={hyperliquidData.avatarUrl}
+                ethosScore={hyperliquidData.ethosScore}
+                stockMetric={hyperliquidData.stockMetric}
+                flowMetric={hyperliquidData.flowMetric}
+              />
+            )}
+
+            {/* Lighter Card */}
+            {lighterData && (
+              <AssetCard
+                name={lighterData.name}
+                avatarUrl={lighterData.avatarUrl}
+                ethosScore={lighterData.ethosScore}
+                stockMetric={lighterData.stockMetric}
+                flowMetric={lighterData.flowMetric}
+              />
+            )}
           </div>
+
+          {/* Error messages if data failed to load */}
+          {!hyperliquidData && hyperliquidConfig && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Data Fetch Error</AlertTitle>
+              <AlertDescription>
+                Failed to fetch live data for Hyperliquid.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!lighterData && lighterConfig && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Data Fetch Error</AlertTitle>
+              <AlertDescription>
+                Failed to fetch live data for Lighter.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Footer */}
           <div className="text-center text-sm text-slate-500">

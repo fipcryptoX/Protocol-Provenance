@@ -60,12 +60,39 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
 
     metrics: {
       stock: {
-        label: "Open Interest",
+        label: "24h Open Interest",
         source: "defillama",
-        field: "openInterest"
+        field: "dailyOpenInterest"
       },
       flow: {
-        label: "24h Perp Volume",
+        label: "24h Volume",
+        source: "defillama",
+        field: "total24h"
+      }
+    }
+  },
+  lighter: {
+    id: "lighter",
+    displayName: "Lighter",
+
+    ethos: {
+      searchName: "Lighter",
+      twitterUsername: "lighter_xyz"
+    },
+
+    defillama: {
+      protocolSlug: "lighter",
+      category: "perps"
+    },
+
+    metrics: {
+      stock: {
+        label: "24h Open Interest",
+        source: "defillama",
+        field: "dailyOpenInterest"
+      },
+      flow: {
+        label: "24h Volume",
         source: "defillama",
         field: "total24h"
       }

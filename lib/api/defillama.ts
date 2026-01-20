@@ -96,6 +96,45 @@ export async function getProtocol(slug: string): Promise<DefiLlamaProtocol | nul
   }
 }
 
+/**
+ * Get protocol logo URL from DefiLlama
+ *
+ * @param protocolSlug - The protocol slug (e.g., "hyperliquid")
+ * @returns Logo URL or null if not found
+ */
+export async function getProtocolLogo(
+  protocolSlug: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${DEFILLAMA_API_BASE}/protocol/${protocolSlug}`, {
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch protocol ${protocolSlug} from DefiLlama: ${response.status}`
+      )
+      return null
+    }
+
+    const data = await response.json()
+
+    if (!data.logo) {
+      console.warn(`No logo found for protocol: ${protocolSlug}`)
+      return null
+    }
+
+    console.log(`Logo URL found for ${protocolSlug}: ${data.logo}`)
+    return data.logo
+  } catch (error) {
+    console.error(
+      `Error fetching logo for ${protocolSlug}:`,
+      error
+    )
+    return null
+  }
+}
+
 export async function getProtocolRevenue(protocolName: string): Promise<number> {
   try {
     // DefiLlama fees/revenue endpoint
@@ -163,6 +202,34 @@ export async function getProtocolMetrics(
   }
 
   return metrics;
+}
+
+/**
+ * Fetch open interest data from DefiLlama
+ *
+ * @returns Array of protocols with open interest data
+ */
+export async function getOpenInterestData(): Promise<any[]> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/overview/open-interest`,
+      {
+        next: { revalidate: 120 }, // 2 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch open interest data: ${response.status}`)
+      return []
+    }
+
+    const data = await response.json()
+    // The API returns an object with protocols array
+    return data.protocols || []
+  } catch (error) {
+    console.error(`Error fetching open interest data:`, error)
+    return []
+  }
 }
 
 /**
@@ -267,7 +334,59 @@ export async function getMetricFromCategory(
   fieldName: string
 ): Promise<number | null> {
   try {
-    // For perps, use the dedicated derivatives endpoint
+    // For open interest metrics, use the open interest endpoint
+    if (fieldName === "dailyOpenInterest" || fieldName === "openInterest") {
+      const protocols = await getOpenInterestData()
+
+      console.log(`Searching for ${protocolSlug} in open interest data...`)
+
+      // Find the protocol by name or displayName matching the slug
+      const protocolData = protocols.find((p: any) => {
+        const slug = protocolSlug.toLowerCase()
+        const name = p.name?.toLowerCase() || ""
+        const displayName = p.displayName?.toLowerCase() || ""
+
+        // Match by exact name, displayName, or if displayName contains the slug
+        return (
+          name === slug ||
+          displayName === slug ||
+          displayName.includes(slug) ||
+          displayName === `${slug} perps`
+        )
+      })
+
+      if (!protocolData) {
+        console.warn(
+          `Protocol ${protocolSlug} not found in open interest data`
+        )
+        // Log available protocols for debugging
+        console.log(
+          `Available protocols (first 10):`,
+          protocols.slice(0, 10).map(p => ({
+            name: p.name,
+            displayName: p.displayName
+          }))
+        )
+        return null
+      }
+
+      console.log(`Found protocol: ${protocolData.displayName || protocolData.name}`)
+
+      // Extract the field value (use total24h for 24h open interest)
+      const value = protocolData.total24h || protocolData.dailyOpenInterest || protocolData.openInterest
+
+      if (typeof value !== "number") {
+        console.warn(
+          `Open interest field not found or not a number for ${protocolSlug}`
+        )
+        return null
+      }
+
+      console.log(`Open interest for ${protocolSlug}: ${value}`)
+      return value
+    }
+
+    // For perps volume metrics, use the dedicated derivatives endpoint
     if (category === "perps") {
       const protocolData = await getDerivativesProtocol(protocolSlug)
 

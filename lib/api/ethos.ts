@@ -26,12 +26,30 @@ export interface EthosUserScore {
 export interface EthosUser {
   id: number
   username?: string
+  avatarUrl?: string
+  displayName?: string
+  score?: number
   // Add other fields as needed
+}
+
+export interface EthosProject {
+  id: number
+  userkey: string
+  status: string
+  description?: string
+  user: EthosUser
+  // Add other fields as needed
+}
+
+export interface EthosProjectsResponse {
+  projects: EthosProject[]
+  total: number
 }
 
 /**
  * Get Ethos data for a protocol by search name
  *
+ * @deprecated This uses the deprecated v1 API. Use getUserScoreFromTwitter instead with v2 API.
  * @param searchName - The protocol name to search for
  * @returns Ethos protocol data including name, avatar, and score
  */
@@ -185,6 +203,76 @@ export async function getUserScoreFromTwitter(
   } catch (error) {
     console.error(
       `Error fetching user score for Twitter username ${twitterUsername}:`,
+      error
+    )
+    return null
+  }
+}
+
+/**
+ * Get avatar URL from Ethos projects API
+ *
+ * @param projectName - The project name to search for (e.g., "Hyperliquid")
+ * @returns Avatar URL or null if not found
+ */
+export async function getProjectAvatarUrl(
+  projectName: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${ETHOS_API_V2_BASE}/projects`, {
+      headers: {
+        Accept: "*/*",
+      },
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch projects from Ethos: ${response.status}`
+      )
+      return null
+    }
+
+    const data: EthosProjectsResponse = await response.json()
+
+    console.log(`Searching for project: ${projectName} among ${data.projects.length} projects`)
+
+    // Find the project by userkey or user display name
+    const project = data.projects.find(
+      (p) =>
+        p.userkey?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.displayName?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.username?.toLowerCase() === projectName.toLowerCase()
+    )
+
+    if (!project) {
+      console.warn(
+        `Project ${projectName} not found in projects list`
+      )
+      // Log available project names for debugging
+      console.log(
+        `Available projects:`,
+        data.projects.slice(0, 10).map(p => ({
+          userkey: p.userkey,
+          displayName: p.user?.displayName,
+          username: p.user?.username
+        }))
+      )
+      return null
+    }
+
+    if (!project.user?.avatarUrl) {
+      console.warn(
+        `No avatar URL found for project: ${projectName}`
+      )
+      return null
+    }
+
+    console.log(`Avatar URL found for ${projectName}: ${project.user.avatarUrl}`)
+    return project.user.avatarUrl
+  } catch (error) {
+    console.error(
+      `Error fetching avatar URL for ${projectName}:`,
       error
     )
     return null
