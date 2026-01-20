@@ -23,6 +23,8 @@ export interface ProtocolCardData {
   name: string
   avatarUrl?: string
   ethosScore: number
+  category: string
+  tags?: string[]
   stockMetric: {
     label: string
     valueUsd: number
@@ -105,6 +107,8 @@ export async function fetchProtocolData(
       name: config.displayName,
       avatarUrl: avatarUrl || undefined,
       ethosScore: finalEthosScore,
+      category: config.category,
+      tags: config.tags,
       stockMetric: {
         label: config.metrics.stock.label,
         valueUsd: stockValue,

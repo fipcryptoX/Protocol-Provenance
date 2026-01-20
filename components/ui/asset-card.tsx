@@ -1,12 +1,15 @@
 import * as React from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CategoryBadge, ProtocolTag } from "@/components/ui/protocol-tag"
 import { cn } from "@/lib/utils"
 
 export interface AssetCardProps {
   name: string
   avatarUrl?: string
   ethosScore: number
+  category: string
+  tags?: string[]
   stockMetric: {
     label: string
     valueUsd: number
@@ -22,6 +25,8 @@ export function AssetCard({
   name,
   avatarUrl,
   ethosScore,
+  category,
+  tags,
   stockMetric,
   flowMetric,
   className,
@@ -55,12 +60,20 @@ export function AssetCard({
             )}
             <div>
               <h3 className="text-lg font-semibold tracking-tight">{name}</h3>
+              <CategoryBadge category={category} className="mt-1" />
             </div>
           </div>
           <Badge variant="secondary" className="flex-shrink-0">
             Ethos: {ethosScore}
           </Badge>
         </div>
+        {tags && tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {tags.map((tag) => (
+              <ProtocolTag key={tag} type={tag} />
+            ))}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3">
