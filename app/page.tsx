@@ -171,7 +171,12 @@ export default function Home() {
   const loadingRef = useRef<Set<string>>(new Set())
 
   // Lazy load sparkline data
-  const loadSparklineData = useCallback(async (protocolName: string, slug?: string) => {
+  const loadSparklineData = useCallback(async (protocolName: string, slug?: string, category?: string) => {
+    // Skip sparklines for chains - they don't have protocol historical data
+    if (category === 'chain') {
+      return
+    }
+
     if (!slug) {
       console.warn(`No slug provided for ${protocolName}, skipping sparkline`)
       return
@@ -264,7 +269,7 @@ export default function Home() {
                   stockMetric={protocol.stockMetric}
                   flowMetric={protocol.flowMetric}
                   sparklineData={sparklineData[protocol.name]}
-                  onVisible={() => loadSparklineData(protocol.name, protocol.slug)}
+                  onVisible={() => loadSparklineData(protocol.name, protocol.slug, protocol.category)}
                 />
               ))}
             </div>
