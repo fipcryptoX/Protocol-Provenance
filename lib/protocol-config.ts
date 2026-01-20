@@ -21,6 +21,8 @@ export interface MetricConfig {
 export interface ProtocolConfig {
   id: string
   displayName: string
+  category: string // Display category (e.g., "perps", "dex", "lending")
+  tags?: string[] // Protocol type tags (e.g., ["derivatives", "orderbook"])
 
   ethos: {
     searchName: string
@@ -47,6 +49,7 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
   hyperliquid: {
     id: "hyperliquid",
     displayName: "Hyperliquid",
+    category: "perps",
 
     ethos: {
       searchName: "Hyperliquid",
@@ -74,6 +77,7 @@ export const PROTOCOLS: Record<string, ProtocolConfig> = {
   lighter: {
     id: "lighter",
     displayName: "Lighter",
+    category: "perps",
 
     ethos: {
       searchName: "Lighter",

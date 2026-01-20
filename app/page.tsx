@@ -1,32 +1,34 @@
 /**
  * Protocol Provenance Dashboard
  *
- * v0 Scope:
- * - Displays a single protocol card (Hyperliquid)
- * - Uses live production APIs (Ethos + DefiLlama)
- * - Stock-flow pairing enforced
- * - Architecturally supports multiple protocols via configuration
+ * Dynamic Version:
+ * - Automatically fetches all protocols with TVL >= $10B from DefiLlama
+ * - Automatically fetches all chains with TVL >= $4B from DefiLlama
+ * - Normalizes categories and applies stock/flow pairing
+ * - Fetches Ethos scores from Twitter
+ * - Renders protocol and chain cards dynamically
  *
  * This is a credibility snapshot, not an analytics terminal.
  * No rankings, comparisons, charts, time ranges, or user inputs.
  */
 
 import { AssetCard } from "@/components/ui/asset-card"
-import { getProtocolConfig } from "@/lib/protocol-config"
-import { fetchProtocolDataSafe } from "@/lib/protocol-data"
+import { buildAllProtocolCards } from "@/lib/dynamic-protocol-data"
+import { buildAllChainCards } from "@/lib/dynamic-chain-data"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
-  // Get protocol configurations
-  const hyperliquidConfig = getProtocolConfig("hyperliquid")
-  const lighterConfig = getProtocolConfig("lighter")
+  // Dynamically build all protocol cards from DefiLlama
+  // Filters protocols with TVL >= $10B
+  const protocolCards = await buildAllProtocolCards(10_000_000_000)
 
-  // Fetch live data from Ethos and DefiLlama for both protocols
-  const [hyperliquidData, lighterData] = await Promise.all([
-    hyperliquidConfig ? fetchProtocolDataSafe(hyperliquidConfig) : null,
-    lighterConfig ? fetchProtocolDataSafe(lighterConfig) : null,
-  ])
+  // Dynamically build all chain cards from DefiLlama
+  // Filters chains with Stablecoin MCap >= $5B
+  const chainCards = await buildAllChainCards(5_000_000_000)
+
+  // Combine all cards
+  const allCards = [...protocolCards, ...chainCards]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -42,48 +44,28 @@ export default async function Home() {
             </p>
           </div>
 
-          {/* Protocol Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Hyperliquid Card */}
-            {hyperliquidData && (
-              <AssetCard
-                name={hyperliquidData.name}
-                avatarUrl={hyperliquidData.avatarUrl}
-                ethosScore={hyperliquidData.ethosScore}
-                stockMetric={hyperliquidData.stockMetric}
-                flowMetric={hyperliquidData.flowMetric}
-              />
-            )}
-
-            {/* Lighter Card */}
-            {lighterData && (
-              <AssetCard
-                name={lighterData.name}
-                avatarUrl={lighterData.avatarUrl}
-                ethosScore={lighterData.ethosScore}
-                stockMetric={lighterData.stockMetric}
-                flowMetric={lighterData.flowMetric}
-              />
-            )}
-          </div>
-
-          {/* Error messages if data failed to load */}
-          {!hyperliquidData && hyperliquidConfig && (
-            <Alert variant="destructive">
+          {/* Protocol and Chain Cards */}
+          {allCards.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allCards.map((card) => (
+                <AssetCard
+                  key={card.name}
+                  name={card.name}
+                  avatarUrl={card.avatarUrl}
+                  ethosScore={card.ethosScore}
+                  category={card.category}
+                  tags={card.tags}
+                  stockMetric={card.stockMetric}
+                  flowMetric={card.flowMetric}
+                />
+              ))}
+            </div>
+          ) : (
+            <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Data Fetch Error</AlertTitle>
+              <AlertTitle>No Data Found</AlertTitle>
               <AlertDescription>
-                Failed to fetch live data for Hyperliquid.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {!lighterData && lighterConfig && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Data Fetch Error</AlertTitle>
-              <AlertDescription>
-                Failed to fetch live data for Lighter.
+                No protocols or chains found or failed to load data.
               </AlertDescription>
             </Alert>
           )}
