@@ -2,59 +2,91 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const results: any = {
-    ethos: null,
-    defillama: null,
+    hyperliquidApi: null,
+    defillamaVolume: null,
+    defillamaProtocol: null,
     errors: []
   }
 
-  // Test Ethos API
+  // Test Hyperliquid's own API
   try {
-    const ethosResponse = await fetch(
-      `https://api.ethos.network/v1/search?query=Hyperliquid&type=target`,
+    const hyperliquidResponse = await fetch(
+      `https://api.hyperliquid.xyz/info`,
       {
+        method: 'POST',
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ type: "metaAndAssetCtxs" })
       }
     )
 
-    results.ethos = {
-      status: ethosResponse.status,
-      statusText: ethosResponse.statusText,
-      data: ethosResponse.ok ? await ethosResponse.json() : await ethosResponse.text()
+    if (hyperliquidResponse.ok) {
+      const data = await hyperliquidResponse.json()
+      const totalOI = data.assetCtxs?.reduce((sum: number, asset: any) =>
+        sum + (parseFloat(asset.openInterest) || 0), 0
+      )
+      const totalVol = data.assetCtxs?.reduce((sum: number, asset: any) =>
+        sum + (parseFloat(asset.dayNtlVlm) || 0), 0
+      )
+
+      results.hyperliquidApi = {
+        status: 'success',
+        totalOpenInterest: totalOI,
+        total24hVolume: totalVol,
+        assetCount: data.assetCtxs?.length
+      }
     }
   } catch (error: any) {
     results.errors.push({
-      api: 'ethos',
+      api: 'hyperliquid',
       error: error.message
     })
   }
 
-  // Test DefiLlama derivatives API
+  // Test DefiLlama derivatives/volume API
   try {
-    const defillamaResponse = await fetch(
-      `https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true&dataType=dailyVolume`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+    const volumeResponse = await fetch(
+      `https://api.llama.fi/overview/derivatives?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true&dataType=dailyVolume`
     )
 
-    const data = defillamaResponse.ok ? await defillamaResponse.json() : await defillamaResponse.text()
-
-    results.defillama = {
-      status: defillamaResponse.status,
-      statusText: defillamaResponse.statusText,
-      hasProtocols: data?.protocols ? true : false,
-      protocolCount: data?.protocols?.length || 0,
-      hyperliquidData: data?.protocols?.find((p: any) =>
+    if (volumeResponse.ok) {
+      const data = await volumeResponse.json()
+      const hyperliquid = data?.protocols?.find((p: any) =>
         p.name?.toLowerCase().includes('hyperliquid')
       )
+
+      results.defillamaVolume = {
+        status: 'success',
+        total24h: hyperliquid?.total24h,
+        allFields: Object.keys(hyperliquid || {})
+      }
     }
   } catch (error: any) {
     results.errors.push({
-      api: 'defillama',
+      api: 'defillama-volume',
+      error: error.message
+    })
+  }
+
+  // Test DefiLlama protocol endpoint for TVL/other metrics
+  try {
+    const protocolResponse = await fetch(
+      `https://api.llama.fi/protocol/hyperliquid`
+    )
+
+    if (protocolResponse.ok) {
+      const data = await protocolResponse.json()
+      results.defillamaProtocol = {
+        status: 'success',
+        tvl: data.tvl,
+        chainTvls: data.chainTvls,
+        availableFields: Object.keys(data || {})
+      }
+    }
+  } catch (error: any) {
+    results.errors.push({
+      api: 'defillama-protocol',
       error: error.message
     })
   }
