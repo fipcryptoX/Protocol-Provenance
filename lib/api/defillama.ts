@@ -444,3 +444,155 @@ export async function getMetricFromCategory(
     return null
   }
 }
+
+/**
+ * Historical data point with timestamp and value
+ */
+export interface HistoricalDataPoint {
+  timestamp: number
+  value: number
+}
+
+/**
+ * Get historical TVL data for a protocol
+ *
+ * @param protocolSlug - The protocol slug (e.g., "aave", "uniswap")
+ * @returns Array of historical TVL data points
+ */
+export async function getHistoricalTVL(
+  protocolSlug: string
+): Promise<HistoricalDataPoint[]> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/protocol/${protocolSlug}`,
+      {
+        next: { revalidate: 3600 }, // 1 hour cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch historical TVL for ${protocolSlug}: ${response.status}`
+      )
+      return []
+    }
+
+    const data = await response.json()
+
+    // Extract TVL time series from chainTvls or tvl array
+    let tvlData: Array<{ date: number; totalLiquidityUSD: number }> = []
+
+    if (data.chainTvls) {
+      // Get combined TVL from all chains
+      const combinedKey = Object.keys(data.chainTvls).find(
+        (key) => key.toLowerCase() === protocolSlug.toLowerCase() || key === "tvl"
+      )
+      if (combinedKey && data.chainTvls[combinedKey]?.tvl) {
+        tvlData = data.chainTvls[combinedKey].tvl
+      }
+    }
+
+    // Fallback to direct tvl array
+    if (tvlData.length === 0 && data.tvl) {
+      tvlData = data.tvl
+    }
+
+    // Convert to standard format
+    return tvlData.map((point) => ({
+      timestamp: point.date,
+      value: point.totalLiquidityUSD,
+    }))
+  } catch (error) {
+    console.error(`Error fetching historical TVL for ${protocolSlug}:`, error)
+    return []
+  }
+}
+
+/**
+ * Get historical fees/revenue data for a protocol
+ *
+ * @param protocolSlug - The protocol slug (e.g., "aave", "uniswap")
+ * @returns Array of historical revenue data points
+ */
+export async function getHistoricalFees(
+  protocolSlug: string
+): Promise<HistoricalDataPoint[]> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/summary/fees/${protocolSlug}`,
+      {
+        next: { revalidate: 3600 }, // 1 hour cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch historical fees for ${protocolSlug}: ${response.status}`
+      )
+      return []
+    }
+
+    const data = await response.json()
+
+    // Extract totalDataChart which contains [timestamp, value] pairs
+    if (!data.totalDataChart || !Array.isArray(data.totalDataChart)) {
+      console.warn(`No totalDataChart found for ${protocolSlug}`)
+      return []
+    }
+
+    // Convert [timestamp, value] pairs to objects
+    return data.totalDataChart.map(([timestamp, value]: [number, number]) => ({
+      timestamp,
+      value,
+    }))
+  } catch (error) {
+    console.error(`Error fetching historical fees for ${protocolSlug}:`, error)
+    return []
+  }
+}
+
+/**
+ * Get historical stablecoin market cap for stablecoin protocols
+ *
+ * @param chain - Chain name or "all" for all chains
+ * @returns Array of historical stablecoin data points
+ */
+export async function getHistoricalStablecoinMcap(
+  chain: string = "all"
+): Promise<HistoricalDataPoint[]> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/stablecoincharts/${chain}`,
+      {
+        next: { revalidate: 3600 }, // 1 hour cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch historical stablecoin data for ${chain}: ${response.status}`
+      )
+      return []
+    }
+
+    const data = await response.json()
+
+    // The API returns an array of data points
+    if (!Array.isArray(data)) {
+      console.warn(`Invalid stablecoin data format for ${chain}`)
+      return []
+    }
+
+    // Convert to standard format
+    return data.map((point: any) => ({
+      timestamp: point.date || point.timestamp,
+      value: point.totalCirculatingUSD || point.value || 0,
+    }))
+  } catch (error) {
+    console.error(
+      `Error fetching historical stablecoin data for ${chain}:`,
+      error
+    )
+    return []
+  }
+}

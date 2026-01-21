@@ -278,3 +278,167 @@ export async function getProjectAvatarUrl(
     return null
   }
 }
+
+/**
+ * Review sentiment types
+ */
+export type ReviewSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE"
+
+/**
+ * Review activity from Ethos
+ */
+export interface EthosReview {
+  id: string
+  createdAt: string
+  content: string
+  reviewScore: ReviewSentiment
+  author: {
+    id: number
+    displayName?: string
+    username?: string
+    avatarUrl?: string
+    score: number
+  }
+}
+
+/**
+ * Response from Ethos activities endpoint
+ */
+export interface EthosActivitiesResponse {
+  values: Array<{
+    type: string
+    createdAt: string
+    content?: string
+    reviewScore?: ReviewSentiment
+    author?: {
+      id?: number
+      displayName?: string
+      username?: string
+      avatarUrl?: string
+      score?: number
+    }
+    [key: string]: any
+  }>
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * Get reviews for a protocol/project by userkey
+ *
+ * @param userkey - The Ethos userkey for the protocol
+ * @param limit - Number of reviews to fetch (default: 100)
+ * @param offset - Offset for pagination (default: 0)
+ * @returns Array of reviews and pagination info
+ */
+export async function getProtocolReviews(
+  userkey: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<{ reviews: EthosReview[]; total: number }> {
+  try {
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/activities/profile/received`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+        },
+        body: JSON.stringify({
+          userkey,
+          filter: ["review"],
+          orderBy: {
+            field: "timestamp",
+            direction: "desc",
+          },
+          limit,
+          offset,
+          excludeSpam: true,
+        }),
+        next: { revalidate: 300 }, // 5 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch reviews for ${userkey}: ${response.status}`
+      )
+      return { reviews: [], total: 0 }
+    }
+
+    const data: EthosActivitiesResponse = await response.json()
+
+    // Filter and transform review activities
+    const reviews: EthosReview[] = data.values
+      .filter((activity) => activity.type === "review" && activity.content)
+      .map((activity) => ({
+        id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
+        createdAt: activity.createdAt,
+        content: activity.content || "",
+        reviewScore: activity.reviewScore || "NEUTRAL",
+        author: {
+          id: activity.author?.id || 0,
+          displayName: activity.author?.displayName,
+          username: activity.author?.username,
+          avatarUrl: activity.author?.avatarUrl,
+          score: activity.author?.score || 0,
+        },
+      }))
+
+    return {
+      reviews,
+      total: data.total,
+    }
+  } catch (error) {
+    console.error(`Error fetching reviews for ${userkey}:`, error)
+    return { reviews: [], total: 0 }
+  }
+}
+
+/**
+ * Get userkey from project name
+ *
+ * @param projectName - The project name to search for
+ * @returns Userkey or null if not found
+ */
+export async function getUserkeyFromProjectName(
+  projectName: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${ETHOS_API_V2_BASE}/projects`, {
+      headers: {
+        Accept: "*/*",
+      },
+      next: { revalidate: 120 }, // 2 minute cache
+    })
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch projects from Ethos: ${response.status}`
+      )
+      return null
+    }
+
+    const data: EthosProjectsResponse = await response.json()
+
+    // Find the project by userkey or user display name
+    const project = data.projects.find(
+      (p) =>
+        p.userkey?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.displayName?.toLowerCase() === projectName.toLowerCase() ||
+        p.user?.username?.toLowerCase() === projectName.toLowerCase()
+    )
+
+    if (!project) {
+      console.warn(`Project ${projectName} not found`)
+      return null
+    }
+
+    return project.userkey
+  } catch (error) {
+    console.error(`Error fetching userkey for ${projectName}:`, error)
+    return null
+  }
+}
