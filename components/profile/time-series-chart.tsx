@@ -31,6 +31,7 @@ interface WeeklyDataPoint {
   week: string
   weekTimestamp: number
   stockValue: number | null
+  flowValue: number | null
   reviewCount: number
   dominantSentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL"
   sentiment: { positive: number; neutral: number; negative: number }
@@ -51,10 +52,8 @@ export function TimeSeriesChart({
     const WEEK_IN_SECONDS = 7 * 24 * 60 * 60
     const weekMap = new Map<number, WeeklyDataPoint>()
 
-    // First pass: aggregate stock data by week
+    // First pass: aggregate stock and flow data by week
     data.forEach((point) => {
-      if (point.stock === null) return
-
       const weekStart = Math.floor(point.timestamp / WEEK_IN_SECONDS) * WEEK_IN_SECONDS
 
       if (!weekMap.has(weekStart)) {
@@ -63,10 +62,16 @@ export function TimeSeriesChart({
           week: weekDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           weekTimestamp: weekStart,
           stockValue: point.stock,
+          flowValue: point.flow,
           reviewCount: 0,
           dominantSentiment: "NEUTRAL",
           sentiment: { positive: 0, neutral: 0, negative: 0 },
         })
+      } else {
+        // Update with latest values if already exists
+        const weekPoint = weekMap.get(weekStart)!
+        if (point.stock !== null) weekPoint.stockValue = point.stock
+        if (point.flow !== null) weekPoint.flowValue = point.flow
       }
     })
 
@@ -136,6 +141,10 @@ export function TimeSeriesChart({
     stock: {
       label: stockLabel,
       color: "#3b82f6",
+    },
+    flow: {
+      label: flowLabel,
+      color: "#f97316",
     },
   } satisfies ChartConfig
 
@@ -210,6 +219,7 @@ export function TimeSeriesChart({
           />
 
           <YAxis
+            yAxisId="left"
             stroke="#3b82f6"
             tickFormatter={formatYAxis}
             style={{ fontSize: "12px" }}
@@ -219,6 +229,21 @@ export function TimeSeriesChart({
               angle: -90,
               position: "insideLeft",
               style: { fill: "#3b82f6", fontWeight: 600 },
+            }}
+          />
+
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            stroke="#f97316"
+            tickFormatter={formatYAxis}
+            style={{ fontSize: "12px" }}
+            tick={{ fill: "#f97316" }}
+            label={{
+              value: flowLabel,
+              angle: 90,
+              position: "insideRight",
+              style: { fill: "#f97316", fontWeight: 600 },
             }}
           />
 
@@ -240,6 +265,14 @@ export function TimeSeriesChart({
                         {payload.stockValue !== null ? formatCurrency(payload.stockValue) : "N/A"}
                       </span>
                     </div>
+                    {payload.flowValue !== null && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-slate-600">{flowLabel}:</span>
+                        <span className="text-slate-900 font-semibold">
+                          {formatCurrency(payload.flowValue)}
+                        </span>
+                      </div>
+                    )}
                     {payload.reviewCount > 0 && (
                       <>
                         <div className="flex items-center justify-between gap-4">
@@ -262,6 +295,7 @@ export function TimeSeriesChart({
           />
 
           <Line
+            yAxisId="left"
             type="monotone"
             dataKey="stockValue"
             stroke="#3b82f6"
@@ -269,6 +303,17 @@ export function TimeSeriesChart({
             dot={renderDot}
             connectNulls
             name={stockLabel}
+          />
+
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="flowValue"
+            stroke="#f97316"
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            name={flowLabel}
           />
         </LineChart>
       </ChartContainer>
