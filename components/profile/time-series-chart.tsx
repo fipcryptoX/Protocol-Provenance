@@ -178,6 +178,7 @@ export function TimeSeriesChart({
             r={dotSize + 2}
             fill={outlineColor}
             opacity={0.5}
+            pointerEvents="none"
           />
         )}
 
@@ -189,10 +190,7 @@ export function TimeSeriesChart({
           fill={primaryColor}
           stroke="white"
           strokeWidth={2}
-          style={{ cursor: "pointer" }}
-          onClick={() => payload.weekData && onMarkerClick(payload.weekData)}
-          onMouseEnter={(e: any) => payload.weekData && onMarkerHover(payload.weekData, e)}
-          onMouseLeave={() => onMarkerHover(null)}
+          pointerEvents="none"
         />
 
         {/* Review count text */}
@@ -203,9 +201,32 @@ export function TimeSeriesChart({
           fill="#64748b"
           fontSize="10"
           fontWeight="600"
+          pointerEvents="none"
         >
           {payload.reviewCount}
         </text>
+
+        {/* Larger invisible hit area for clicking - must be last (on top) */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={dotSize + 6}
+          fill="transparent"
+          stroke="transparent"
+          style={{ cursor: "pointer" }}
+          onClick={(e) => {
+            e.stopPropagation()
+            payload.weekData && onMarkerClick(payload.weekData)
+          }}
+          onMouseEnter={(e: any) => {
+            e.stopPropagation()
+            payload.weekData && onMarkerHover(payload.weekData, e)
+          }}
+          onMouseLeave={(e) => {
+            e.stopPropagation()
+            onMarkerHover(null)
+          }}
+        />
       </g>
     )
   }
