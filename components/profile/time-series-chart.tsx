@@ -200,11 +200,11 @@ export function TimeSeriesChart({
             strokeWidth={2}
             dot={(props: any) => {
               const { cx, cy, payload } = props
-              if (!cx || !cy) return null
+              if (!cx || !cy) return <></>
 
               // Fast O(1) lookup instead of O(n) find
               const weekData = reviewMarkersByDate.get(payload.date)
-              if (!weekData) return null
+              if (!weekData) return <></>
 
               // Determine which sentiments to show (prioritize positive/negative over neutral)
               const { positive, neutral, negative } = weekData.weekData.sentiment
