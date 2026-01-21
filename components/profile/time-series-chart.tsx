@@ -144,7 +144,7 @@ export function TimeSeriesChart({
     const { cx, cy, payload } = props
 
     if (!payload.reviewCount || payload.reviewCount === 0) {
-      return null
+      return <></>
     }
 
     const primaryColor = getDotColor(payload.dominantSentiment)
