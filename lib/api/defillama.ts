@@ -466,7 +466,7 @@ export async function getHistoricalTVL(
     const response = await fetch(
       `${DEFILLAMA_API_BASE}/protocol/${protocolSlug}`,
       {
-        next: { revalidate: 3600 }, // 1 hour cache
+        cache: "no-store", // Client-side compatible
       }
     )
 
@@ -521,7 +521,7 @@ export async function getHistoricalFees(
     const response = await fetch(
       `${DEFILLAMA_API_BASE}/summary/fees/${protocolSlug}`,
       {
-        next: { revalidate: 3600 }, // 1 hour cache
+        cache: "no-store", // Client-side compatible
       }
     )
 
@@ -564,7 +564,7 @@ export async function getHistoricalStablecoinMcap(
     const response = await fetch(
       `${DEFILLAMA_API_BASE}/stablecoincharts/${chain}`,
       {
-        next: { revalidate: 3600 }, // 1 hour cache
+        cache: "no-store", // Client-side compatible
       }
     )
 

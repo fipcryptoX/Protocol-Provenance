@@ -428,7 +428,7 @@ export async function getUserByTwitter(
         headers: {
           Accept: "*/*",
         },
-        next: { revalidate: 300 }, // 5 minute cache
+        cache: "no-store", // Client-side compatible
       }
     )
 
@@ -481,6 +481,16 @@ export async function getReviewsByTwitter(
 
     // Use the first userkey to fetch reviews
     const userkey = user.userkeys[0]
+    console.log(`Using userkey: ${userkey} for @${twitterUsername}`)
+
+    const requestBody = {
+      userkey,
+      filter: ["review"],
+      limit,
+      offset,
+      excludeSpam: true,
+    }
+    console.log(`Fetching reviews with body:`, JSON.stringify(requestBody, null, 2))
 
     const response = await fetch(
       `${ETHOS_API_V2_BASE}/activities/profile/received`,
@@ -490,14 +500,8 @@ export async function getReviewsByTwitter(
           "Content-Type": "application/json",
           Accept: "*/*",
         },
-        body: JSON.stringify({
-          userkey,
-          filter: ["review"],
-          limit,
-          offset,
-          excludeSpam: true,
-        }),
-        next: { revalidate: 300 }, // 5 minute cache
+        body: JSON.stringify(requestBody),
+        cache: "no-store", // Client-side compatible
       }
     )
 
@@ -510,9 +514,21 @@ export async function getReviewsByTwitter(
 
     const data: EthosActivitiesResponse = await response.json()
 
+    console.log(
+      `Raw API response for @${twitterUsername}:`,
+      `${data.values.length} activities, ${data.total} total`
+    )
+    console.log(`Activity types:`, data.values.map(v => v.type).join(', '))
+
     // Filter and transform review activities
     const reviews: EthosReview[] = data.values
-      .filter((activity) => activity.type === "review" && activity.content)
+      .filter((activity) => {
+        const isReview = activity.type === "review"
+        const hasContent = !!activity.content
+        if (!isReview) console.log(`Skipping non-review activity: ${activity.type}`)
+        if (isReview && !hasContent) console.log(`Skipping review without content`)
+        return isReview && hasContent
+      })
       .map((activity) => ({
         id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
         createdAt: activity.createdAt,
@@ -528,7 +544,7 @@ export async function getReviewsByTwitter(
       }))
 
     console.log(
-      `Fetched ${reviews.length} reviews for @${twitterUsername} (${data.total} total)`
+      `Fetched ${reviews.length} reviews for @${twitterUsername} (${data.total} total, ${data.values.length} activities returned)`
     )
 
     return {
