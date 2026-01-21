@@ -19,6 +19,7 @@ import {
 import {
   getHistoricalTVL,
   getHistoricalFees,
+  getProtocolDetails,
   HistoricalDataPoint,
 } from "@/lib/api/defillama"
 import {
@@ -64,6 +65,15 @@ export default function ProfilePage() {
 
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
+        // Fetch protocol details from DeFiLlama to get Twitter username
+        const protocolDetails = await cachedFetch(
+          `protocol-details-${defillamaSlug}`,
+          () => getProtocolDetails(defillamaSlug),
+          900000 // 15 min cache
+        )
+
+        console.log(`Protocol details:`, protocolDetails)
+
         // Fetch historical TVL and fees in parallel
         const [tvlData, feesData] = await Promise.all([
           cachedFetch(
@@ -81,18 +91,23 @@ export default function ProfilePage() {
         setStockData(tvlData)
         setFlowData(feesData)
 
-        // Fetch Ethos reviews using Twitter username (only for configured protocols)
-        if (protocolConfig?.ethos.twitterUsername) {
-          console.log(`Fetching reviews for @${protocolConfig.ethos.twitterUsername}`)
+        // Determine which Twitter username to use:
+        // 1. First priority: Twitter from DeFiLlama API
+        // 2. Fallback: Twitter from protocol config (for manually configured protocols)
+        const twitterUsername = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername
+
+        // Fetch Ethos reviews using Twitter username
+        if (twitterUsername) {
+          console.log(`Fetching reviews for @${twitterUsername} (from ${protocolDetails?.twitter ? 'DeFiLlama' : 'config'})`)
           const { reviews: reviewsData } = await cachedFetch(
-            `reviews-twitter-${protocolConfig.ethos.twitterUsername}`,
-            () => getReviewsByTwitter(protocolConfig.ethos.twitterUsername!, 200),
+            `reviews-twitter-${twitterUsername}`,
+            () => getReviewsByTwitter(twitterUsername, 200),
             300000 // 5 min cache
           )
           setReviews(reviewsData)
           console.log(`Fetched ${reviewsData.length} reviews`)
         } else {
-          console.warn(`No Twitter username configured for ${protocolName}, skipping reviews`)
+          console.warn(`No Twitter username found for ${protocolName} (not in DeFiLlama or config), skipping reviews`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)

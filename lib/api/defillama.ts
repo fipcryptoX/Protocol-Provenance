@@ -446,6 +446,63 @@ export async function getMetricFromCategory(
 }
 
 /**
+ * Protocol details from DeFiLlama including metadata
+ */
+export interface ProtocolDetails {
+  name: string
+  twitter?: string
+  url?: string
+  description?: string
+  logo?: string
+  [key: string]: any
+}
+
+/**
+ * Get protocol details including Twitter username
+ *
+ * @param protocolSlug - The protocol slug (e.g., "aave", "uniswap")
+ * @returns Protocol details including Twitter username if available
+ */
+export async function getProtocolDetails(
+  protocolSlug: string
+): Promise<ProtocolDetails | null> {
+  try {
+    const response = await fetch(
+      `${DEFILLAMA_API_BASE}/protocol/${protocolSlug}`,
+      {
+        cache: "no-store", // Client-side compatible
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch protocol details for ${protocolSlug}: ${response.status}`
+      )
+      return null
+    }
+
+    const data = await response.json()
+
+    console.log(`Protocol details for ${protocolSlug}:`, {
+      name: data.name,
+      twitter: data.twitter,
+      url: data.url,
+    })
+
+    return {
+      name: data.name,
+      twitter: data.twitter,
+      url: data.url,
+      description: data.description,
+      logo: data.logo,
+    }
+  } catch (error) {
+    console.error(`Error fetching protocol details for ${protocolSlug}:`, error)
+    return null
+  }
+}
+
+/**
  * Historical data point with timestamp and value
  */
 export interface HistoricalDataPoint {
