@@ -62,10 +62,20 @@ export default function ProfilePage() {
           (p) => p.id === protocolId || p.displayName.toLowerCase() === protocolName.toLowerCase()
         )
 
+        // DeFiLlama slug overrides for protocols with different names
+        const defillamaSlugOverrides: Record<string, string> = {
+          'eigencloud': 'eigenlayer',
+          'binance-staked-eth': 'binance-staked-eth',
+          'lido': 'lido',
+        }
+
         // Determine the DeFiLlama slug to use
-        // For configured protocols, use the config slug
-        // For dynamic protocols, use the URL parameter as the slug
-        const defillamaSlug = protocolConfig?.defillama.protocolSlug || protocolName
+        // 1. Check overrides first
+        // 2. For configured protocols, use the config slug
+        // 3. For dynamic protocols, use the URL parameter as the slug
+        const defillamaSlug = defillamaSlugOverrides[protocolName.toLowerCase()] ||
+                              protocolConfig?.defillama.protocolSlug ||
+                              protocolName
 
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
@@ -73,10 +83,31 @@ export default function ProfilePage() {
         const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
+        // Chain name mapping for DefiLlama API (needs proper capitalization)
+        const chainNameMapping: Record<string, string> = {
+          'ethereum': 'Ethereum',
+          'base': 'Base',
+          'solana': 'Solana',
+          'tron': 'Tron',
+          'arbitrum': 'Arbitrum',
+          'optimism': 'Optimism',
+          'polygon': 'Polygon',
+          'avalanche': 'Avalanche',
+          'bsc': 'BSC',
+          'fantom': 'Fantom',
+        }
+
+        // Get the properly formatted chain name for API calls
+        const chainNameForApi = isChain
+          ? (chainNameMapping[protocolName.toLowerCase()] || protocolName)
+          : protocolName
+
         // Twitter username resolution with hardcoded overrides for specific entities
         const twitterOverrides: Record<string, string> = {
           'base': 'base',
           'eigencloud': 'eigencloud',
+          'lido': 'LidoFinance',
+          'binance-staked-eth': 'binance',
         }
 
         // Fetch all data in parallel for maximum speed
@@ -91,13 +122,13 @@ export default function ProfilePage() {
           isChain
             ? Promise.all([
                 cachedFetch(
-                  `stablecoin-mcap-${protocolName}`,
-                  () => getHistoricalStablecoinMcapForChain(protocolName),
+                  `stablecoin-mcap-${chainNameForApi}`,
+                  () => getHistoricalStablecoinMcapForChain(chainNameForApi),
                   900000
                 ),
                 cachedFetch(
-                  `revenue-${protocolName}`,
-                  () => getHistoricalRevenueForChain(protocolName),
+                  `revenue-${chainNameForApi}`,
+                  () => getHistoricalRevenueForChain(chainNameForApi),
                   900000
                 )
               ])

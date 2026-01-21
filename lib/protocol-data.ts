@@ -16,6 +16,15 @@ import { getMetricFromCategory, getProtocolLogo } from "@/lib/api/defillama"
 import { AssetCardProps } from "@/components/ui/asset-card"
 
 /**
+ * Review distribution for protocol sentiment
+ */
+export interface ReviewDistribution {
+  negative: number
+  neutral: number
+  positive: number
+}
+
+/**
  * Normalized protocol data contract for the UI
  * This is the ONLY data structure the UI should consume
  */
@@ -33,6 +42,7 @@ export interface ProtocolCardData {
     label: string
     valueUsd: number
   }
+  reviewDistribution?: ReviewDistribution
 }
 
 /**

@@ -57,6 +57,7 @@ export default async function Home() {
                   tags={card.tags}
                   stockMetric={card.stockMetric}
                   flowMetric={card.flowMetric}
+                  reviewDistribution={card.reviewDistribution}
                 />
               ))}
             </div>

@@ -37,11 +37,23 @@ export function ReviewModal({
     if (!weekData) return null
 
     // Find the closest data point to the week start
-    const dataPoint = chartData.find(
+    // First try to find an exact match within the week
+    let dataPoint = chartData.find(
       (point) =>
         point.timestamp >= weekData.weekStart &&
         point.timestamp <= weekData.weekEnd
     )
+
+    // If no exact match, find the closest point before or during the week
+    if (!dataPoint && chartData.length > 0) {
+      // Sort by closest timestamp to week start
+      const sortedByDistance = [...chartData].sort((a, b) => {
+        const distA = Math.abs(a.timestamp - weekData.weekStart)
+        const distB = Math.abs(b.timestamp - weekData.weekStart)
+        return distA - distB
+      })
+      dataPoint = sortedByDistance[0]
+    }
 
     return dataPoint
   }, [weekData, chartData])
@@ -100,7 +112,8 @@ export function ReviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="overflow-y-auto flex-1 px-6 -mx-6">
         <DialogHeader>
           <DialogTitle>
             Reviews for{" "}
@@ -235,6 +248,7 @@ export function ReviewModal({
               </CardContent>
             </Card>
           ))}
+        </div>
         </div>
       </DialogContent>
     </Dialog>
