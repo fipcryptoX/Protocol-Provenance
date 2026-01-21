@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -8,10 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { MetricStatCard } from "@/components/ui/metric-stat-card"
 import { WeeklyReviewData, ChartDataPoint } from "@/types"
 import { formatCurrency } from "@/lib/utils"
-import { ThumbsUp, ThumbsDown, Minus } from "lucide-react"
 
 interface ReviewModalProps {
   isOpen: boolean
@@ -44,35 +46,46 @@ export function ReviewModal({
     return dataPoint
   }, [weekData, chartData])
 
-  // Sort reviews by author Ethos score (highest first)
+  // Sentiment filter state
+  const [sentimentFilter, setSentimentFilter] = useState<"ALL" | "POSITIVE" | "NEGATIVE" | "NEUTRAL">("ALL")
+
+  // Sort and filter reviews
   const sortedReviews = useMemo(() => {
     if (!weekData) return []
-    return [...weekData.reviews].sort((a, b) => b.author.score - a.author.score)
-  }, [weekData])
+    let filtered = [...weekData.reviews]
+
+    // Apply sentiment filter
+    if (sentimentFilter !== "ALL") {
+      filtered = filtered.filter(review => review.reviewScore === sentimentFilter)
+    }
+
+    // Sort by Ethos score (highest first)
+    return filtered.sort((a, b) => b.author.score - a.author.score)
+  }, [weekData, sentimentFilter])
 
   if (!weekData) return null
 
-  const getSentimentIcon = (sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE") => {
+  const getSentimentBadge = (sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE") => {
     switch (sentiment) {
       case "POSITIVE":
-        return <ThumbsUp className="h-4 w-4 text-green-600" />
+        return (
+          <Badge className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
+            Positive
+          </Badge>
+        )
       case "NEGATIVE":
-        return <ThumbsDown className="h-4 w-4 text-red-600" />
+        return (
+          <Badge className="bg-red-50 text-red-700 border-red-200 hover:bg-red-50">
+            Negative
+          </Badge>
+        )
       case "NEUTRAL":
       default:
-        return <Minus className="h-4 w-4 text-yellow-600" />
-    }
-  }
-
-  const getSentimentColor = (sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE") => {
-    switch (sentiment) {
-      case "POSITIVE":
-        return "text-green-600 border-green-600"
-      case "NEGATIVE":
-        return "text-red-600 border-red-600"
-      case "NEUTRAL":
-      default:
-        return "text-yellow-600 border-yellow-600"
+        return (
+          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50">
+            Neutral
+          </Badge>
+        )
     }
   }
 
@@ -108,97 +121,119 @@ export function ReviewModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Metric Snapshot */}
+        {/* Metric Snapshot with Animated Cards */}
         {metricSnapshot && (
-          <div className="bg-slate-50 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-slate-900 mb-3">
-              Metrics Snapshot
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {metricSnapshot.stock !== null && (
-                <div>
-                  <p className="text-sm text-slate-600">{stockLabel}</p>
-                  <p className="text-lg font-bold text-slate-900">
-                    {formatCurrency(metricSnapshot.stock)}
-                  </p>
-                </div>
-              )}
-              {metricSnapshot.flow !== null && (
-                <div>
-                  <p className="text-sm text-slate-600">{flowLabel}</p>
-                  <p className="text-lg font-bold text-slate-900">
-                    {formatCurrency(metricSnapshot.flow)}
-                  </p>
-                </div>
-              )}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {metricSnapshot.stock !== null && (
+              <MetricStatCard
+                title={stockLabel}
+                value={metricSnapshot.stock}
+                formatValue={formatCurrency}
+              />
+            )}
+            {metricSnapshot.flow !== null && (
+              <MetricStatCard
+                title={flowLabel}
+                value={metricSnapshot.flow}
+                formatValue={formatCurrency}
+              />
+            )}
           </div>
         )}
 
-        {/* Sentiment Summary */}
-        <div className="flex gap-2 mb-4">
-          {weekData.sentiment.positive > 0 && (
-            <Badge variant="outline" className="text-green-600 border-green-600">
-              {weekData.sentiment.positive} Positive
-            </Badge>
-          )}
-          {weekData.sentiment.neutral > 0 && (
-            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-              {weekData.sentiment.neutral} Neutral
-            </Badge>
-          )}
-          {weekData.sentiment.negative > 0 && (
-            <Badge variant="outline" className="text-red-600 border-red-600">
-              {weekData.sentiment.negative} Negative
-            </Badge>
-          )}
+        {/* Sentiment Filter */}
+        <div className="mb-6">
+          <p className="text-sm font-medium text-slate-700 mb-3">Filter by sentiment</p>
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+            <button
+              onClick={() => setSentimentFilter("ALL")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                sentimentFilter === "ALL"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              All ({weekData.reviewCount})
+            </button>
+            {weekData.sentiment.positive > 0 && (
+              <button
+                onClick={() => setSentimentFilter("POSITIVE")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  sentimentFilter === "POSITIVE"
+                    ? "bg-white text-green-700 shadow-sm"
+                    : "text-slate-600 hover:text-green-700"
+                }`}
+              >
+                Positive ({weekData.sentiment.positive})
+              </button>
+            )}
+            {weekData.sentiment.neutral > 0 && (
+              <button
+                onClick={() => setSentimentFilter("NEUTRAL")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  sentimentFilter === "NEUTRAL"
+                    ? "bg-white text-yellow-700 shadow-sm"
+                    : "text-slate-600 hover:text-yellow-700"
+                }`}
+              >
+                Neutral ({weekData.sentiment.neutral})
+              </button>
+            )}
+            {weekData.sentiment.negative > 0 && (
+              <button
+                onClick={() => setSentimentFilter("NEGATIVE")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  sentimentFilter === "NEGATIVE"
+                    ? "bg-white text-red-700 shadow-sm"
+                    : "text-slate-600 hover:text-red-700"
+                }`}
+              >
+                Negative ({weekData.sentiment.negative})
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Reviews List */}
-        <div className="space-y-4">
+        {/* Reviews Grid - Masonry-style responsive layout */}
+        <div className="columns-1 sm:columns-2 gap-4 space-y-4">
           {sortedReviews.map((review) => (
-            <div
-              key={review.id}
-              className="border border-slate-200 rounded-lg p-4 space-y-3"
-            >
-              {/* Review Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {review.author.avatarUrl ? (
-                    <img
-                      src={review.author.avatarUrl}
-                      alt={review.author.displayName || "User"}
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
-                      <span className="text-slate-600 font-semibold">
-                        {(review.author.displayName || "?").charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {review.author.displayName || review.author.username || "Anonymous"}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <span>Ethos Score: {review.author.score}</span>
-                      <span>•</span>
-                      <span>{formatDate(review.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-                <Badge variant="outline" className={getSentimentColor(review.reviewScore)}>
-                  <span className="flex items-center gap-1">
-                    {getSentimentIcon(review.reviewScore)}
-                    {review.reviewScore}
-                  </span>
-                </Badge>
-              </div>
+            <Card key={review.id} className="break-inside-avoid">
+              <CardContent className="pt-6">
+                <blockquote className="space-y-4">
+                  {/* Header: Author Info and Sentiment Badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <Avatar className="size-12">
+                        <AvatarImage
+                          src={review.author.avatarUrl || undefined}
+                          alt={review.author.displayName || "User"}
+                        />
+                        <AvatarFallback className="bg-slate-200 text-slate-600 font-semibold">
+                          {(review.author.displayName || review.author.username || "?")
+                            .charAt(0)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-              {/* Review Content */}
-              <p className="text-slate-700 leading-relaxed">{review.content}</p>
-            </div>
+                      <div>
+                        <cite className="text-sm font-medium not-italic text-slate-900">
+                          {review.author.displayName || review.author.username || "Anonymous"}
+                        </cite>
+                        <span className="block text-sm text-slate-600">
+                          {review.author.score} | {formatDate(review.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Sentiment Badge */}
+                    {getSentimentBadge(review.reviewScore)}
+                  </div>
+
+                  {/* Review Content */}
+                  <p className="text-slate-700 leading-relaxed">{review.content}</p>
+                </blockquote>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </DialogContent>

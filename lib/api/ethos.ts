@@ -307,14 +307,18 @@ export interface EthosReview {
 export interface EthosActivitiesResponse {
   values: Array<{
     type: string
-    createdAt: string
-    content?: string
-    reviewScore?: ReviewSentiment
-    author?: {
+    timestamp: number
+    data?: {
       id?: number
-      displayName?: string
+      comment?: string
+      metadata?: string
+      score?: string
+    }
+    author?: {
+      profileId?: number
+      name?: string
       username?: string
-      avatarUrl?: string
+      avatar?: string
       score?: number
     }
     [key: string]: any
@@ -372,20 +376,49 @@ export async function getProtocolReviews(
 
     // Filter and transform review activities
     const reviews: EthosReview[] = data.values
-      .filter((activity) => activity.type === "review" && activity.content)
-      .map((activity) => ({
-        id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
-        createdAt: activity.createdAt,
-        content: activity.content || "",
-        reviewScore: activity.reviewScore || "NEUTRAL",
-        author: {
-          id: activity.author?.id || 0,
-          displayName: activity.author?.displayName,
-          username: activity.author?.username,
-          avatarUrl: activity.author?.avatarUrl,
-          score: activity.author?.score || 0,
-        },
-      }))
+      .filter((activity) => {
+        const isReview = activity.type === "review"
+        const hasContent = !!(activity.data?.comment || activity.data?.metadata)
+        return isReview && hasContent
+      })
+      .map((activity) => {
+        // Extract content from data.comment and/or data.metadata.description
+        let content = activity.data?.comment || ""
+
+        // Try to parse metadata for full description
+        if (activity.data?.metadata) {
+          try {
+            const metadata = JSON.parse(activity.data.metadata)
+            if (metadata.description) {
+              content = metadata.description
+            }
+          } catch (e) {
+            // If metadata parsing fails, stick with comment
+          }
+        }
+
+        // Map score field to reviewScore
+        const scoreMap: Record<string, ReviewSentiment> = {
+          positive: "POSITIVE",
+          neutral: "NEUTRAL",
+          negative: "NEGATIVE",
+        }
+        const reviewScore = scoreMap[activity.data?.score?.toLowerCase() || ""] || "NEUTRAL"
+
+        return {
+          id: activity.data?.id?.toString() || `${activity.timestamp}-${activity.author?.profileId}`,
+          createdAt: new Date(activity.timestamp * 1000).toISOString(),
+          content,
+          reviewScore,
+          author: {
+            id: activity.author?.profileId || 0,
+            displayName: activity.author?.name || activity.author?.username,
+            username: activity.author?.username,
+            avatarUrl: activity.author?.avatar,
+            score: activity.author?.score || 0,
+          },
+        }
+      })
 
     return {
       reviews,
@@ -520,28 +553,60 @@ export async function getReviewsByTwitter(
     )
     console.log(`Activity types:`, data.values.map(v => v.type).join(', '))
 
+    // Debug: Log the first review to see its structure
+    const firstReview = data.values.find(v => v.type === 'review')
+    if (firstReview) {
+      console.log(`First review structure:`, JSON.stringify(firstReview, null, 2))
+    }
+
     // Filter and transform review activities
     const reviews: EthosReview[] = data.values
       .filter((activity) => {
         const isReview = activity.type === "review"
-        const hasContent = !!activity.content
+        // Check for content in the correct fields: data.comment or data.metadata
+        const hasContent = !!(activity.data?.comment || activity.data?.metadata)
         if (!isReview) console.log(`Skipping non-review activity: ${activity.type}`)
         if (isReview && !hasContent) console.log(`Skipping review without content`)
         return isReview && hasContent
       })
-      .map((activity) => ({
-        id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
-        createdAt: activity.createdAt,
-        content: activity.content || "",
-        reviewScore: activity.reviewScore || "NEUTRAL",
-        author: {
-          id: activity.author?.id || 0,
-          displayName: activity.author?.displayName,
-          username: activity.author?.username,
-          avatarUrl: activity.author?.avatarUrl,
-          score: activity.author?.score || 0,
-        },
-      }))
+      .map((activity) => {
+        // Extract content from data.comment and/or data.metadata.description
+        let content = activity.data?.comment || ""
+
+        // Try to parse metadata for full description
+        if (activity.data?.metadata) {
+          try {
+            const metadata = JSON.parse(activity.data.metadata)
+            if (metadata.description) {
+              content = metadata.description
+            }
+          } catch (e) {
+            // If metadata parsing fails, stick with comment
+          }
+        }
+
+        // Map score field to reviewScore (positive/neutral/negative)
+        const scoreMap: Record<string, ReviewSentiment> = {
+          positive: "POSITIVE",
+          neutral: "NEUTRAL",
+          negative: "NEGATIVE",
+        }
+        const reviewScore = scoreMap[activity.data?.score?.toLowerCase() || ""] || "NEUTRAL"
+
+        return {
+          id: activity.data?.id?.toString() || `${activity.timestamp}-${activity.author?.profileId}`,
+          createdAt: new Date(activity.timestamp * 1000).toISOString(),
+          content,
+          reviewScore,
+          author: {
+            id: activity.author?.profileId || 0,
+            displayName: activity.author?.name || activity.author?.username,
+            username: activity.author?.username,
+            avatarUrl: activity.author?.avatar,
+            score: activity.author?.score || 0,
+          },
+        }
+      })
 
     console.log(
       `Fetched ${reviews.length} reviews for @${twitterUsername} (${data.total} total, ${data.values.length} activities returned)`

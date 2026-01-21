@@ -10,7 +10,7 @@ interface TimeRangeSelectorProps {
   className?: string
 }
 
-const TIME_RANGES: TimeRange[] = ["1M", "3M", "6M", "1Y", "All"]
+const TIME_RANGES: TimeRange[] = ["1Y"]
 
 export function TimeRangeSelector({
   selectedRange,
