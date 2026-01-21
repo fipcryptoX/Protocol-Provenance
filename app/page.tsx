@@ -1,13 +1,12 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { AssetCard } from "@/components/ui/asset-card"
 import { DashboardToolbar } from "@/components/dashboard-toolbar"
 import { DashboardFilters } from "@/components/dashboard-filters"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ProtocolCardSkeleton } from "@/components/ui/protocol-card-skeleton"
-import { ComparisonTray } from "@/components/comparison-tray"
 import { useDashboardStore } from "@/lib/store"
 
 interface ProtocolData {
@@ -27,9 +26,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(30) // Initial: 30
-  const [sparklineData, setSparklineData] = useState<
-    Record<string, Array<{ date: number; value: number }>>
-  >({})
 
   const { filters, searchQuery, sortBy } = useDashboardStore()
 
@@ -167,51 +163,6 @@ export default function Home() {
     setVisibleCount(30)
   }, [filters, searchQuery, sortBy])
 
-  // Track which protocols we've started loading to prevent duplicates
-  const loadingRef = useRef<Set<string>>(new Set())
-
-  // Lazy load sparkline data
-  const loadSparklineData = useCallback(async (protocolName: string, slug?: string, category?: string) => {
-    // Skip sparklines for chains - they don't have protocol historical data
-    if (category === 'chain') {
-      return
-    }
-
-    if (!slug) {
-      console.warn(`No slug provided for ${protocolName}, skipping sparkline`)
-      return
-    }
-
-    // Check if already loading or loaded
-    if (loadingRef.current.has(protocolName)) {
-      return
-    }
-
-    // Mark as loading
-    loadingRef.current.add(protocolName)
-    console.log(`Loading sparkline for ${protocolName} (slug: ${slug})`)
-
-    try {
-      const res = await fetch(`/api/protocol/history?slug=${slug}&metric=tvl`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.success && data.data.length > 0) {
-          console.log(`✅ Loaded ${data.data.length} data points for ${protocolName}`)
-          setSparklineData((prev) => ({
-            ...prev,
-            [protocolName]: data.data,
-          }))
-        } else {
-          console.warn(`⚠️ No historical data available for ${protocolName}`)
-        }
-      } else {
-        console.warn(`❌ Failed to fetch sparkline for ${protocolName}: ${res.status}`)
-      }
-    } catch (err) {
-      console.error(`❌ Error loading sparkline for ${protocolName}:`, err)
-    }
-  }, []) // Empty deps - callback never changes
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto">
@@ -268,8 +219,7 @@ export default function Home() {
                   tags={protocol.tags}
                   stockMetric={protocol.stockMetric}
                   flowMetric={protocol.flowMetric}
-                  sparklineData={sparklineData[protocol.name]}
-                  onVisible={() => loadSparklineData(protocol.name, protocol.slug, protocol.category)}
+                  enableSelection={false}
                 />
               ))}
             </div>
@@ -310,12 +260,6 @@ export default function Home() {
           </p>
         </div>
       </div>
-
-      {/* Comparison Tray (fixed at bottom) */}
-      <ComparisonTray protocols={allProtocols} />
-
-      {/* Bottom padding to account for comparison tray */}
-      <div className="h-24" />
     </div>
   )
 }

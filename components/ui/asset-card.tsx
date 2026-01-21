@@ -26,6 +26,7 @@ export interface AssetCardProps {
   className?: string
   sparklineData?: Array<{ date: number; value: number }>
   onVisible?: () => void
+  enableSelection?: boolean
 }
 
 export function AssetCard({
@@ -39,12 +40,13 @@ export function AssetCard({
   className,
   sparklineData,
   onVisible,
+  enableSelection = false,
 }: AssetCardProps) {
   const { selectedProtocols, toggleProtocol } = useDashboardStore()
   const cardRef = React.useRef<HTMLDivElement>(null)
   const [hasBeenVisible, setHasBeenVisible] = React.useState(false)
 
-  const isSelected = selectedProtocols.includes(name)
+  const isSelected = enableSelection && selectedProtocols.includes(name)
 
   // Intersection observer for lazy loading sparklines
   React.useEffect(() => {
@@ -83,14 +85,17 @@ export function AssetCard({
   }
 
   const handleCardClick = () => {
-    toggleProtocol(name)
+    if (enableSelection) {
+      toggleProtocol(name)
+    }
   }
 
   return (
     <Card
       ref={cardRef}
       className={cn(
-        "w-full max-w-md cursor-pointer transition-all",
+        "w-full max-w-md transition-all",
+        enableSelection && "cursor-pointer",
         isSelected && "ring-2 ring-primary shadow-lg",
         className
       )}
@@ -99,17 +104,19 @@ export function AssetCard({
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            {/* Selection indicator */}
-            <div
-              className={cn(
-                "h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors",
-                isSelected
-                  ? "bg-primary border-primary"
-                  : "border-muted-foreground/30"
-              )}
-            >
-              {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-            </div>
+            {/* Selection indicator - only show if selection is enabled */}
+            {enableSelection && (
+              <div
+                className={cn(
+                  "h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                  isSelected
+                    ? "bg-primary border-primary"
+                    : "border-muted-foreground/30"
+                )}
+              >
+                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+            )}
             {avatarUrl && (
               <div className="h-12 w-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
                 <img
@@ -165,10 +172,12 @@ export function AssetCard({
             </span>
           </div>
 
-          {/* 30-day sparkline */}
-          <div className="pt-2">
-            <Sparkline data={sparklineData} isLoading={!hasBeenVisible} />
-          </div>
+          {/* 30-day sparkline - only show if data is provided */}
+          {sparklineData && onVisible && (
+            <div className="pt-2">
+              <Sparkline data={sparklineData} isLoading={!hasBeenVisible} />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
