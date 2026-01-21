@@ -6,7 +6,6 @@ import Link from "next/link"
 import { TimeSeriesChart } from "@/components/profile/time-series-chart"
 import { TimeRangeSelector } from "@/components/profile/time-range-selector"
 import { ReviewModal } from "@/components/profile/review-modal"
-import { ReviewTooltip } from "@/components/profile/review-tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -49,8 +48,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<WeeklyReviewData | null>(null)
-  const [hoveredWeek, setHoveredWeek] = useState<WeeklyReviewData | null>(null)
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
 
   // Fetch data on mount
   useEffect(() => {
@@ -299,7 +296,7 @@ export default function ProfilePage() {
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
-  const flowLabel = isChain ? "App Revenue (24h)" : "Revenue (30d)"
+  const flowLabel = isChain ? "App Revenue (7d)" : "Revenue (7d)"
 
   // Handle loading state
   if (loading) {
@@ -367,27 +364,14 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             {filteredChartData.length > 0 ? (
-              <div className="relative">
-                <TimeSeriesChart
-                  data={filteredChartData}
-                  stockLabel={stockLabel}
-                  flowLabel={flowLabel}
-                  reviewData={weeklyReviewData}
-                  onMarkerClick={(weekData) => setSelectedWeek(weekData)}
-                  onMarkerHover={(weekData, event) => {
-                    setHoveredWeek(weekData)
-                    if (weekData && event) {
-                      setTooltipPosition({
-                        x: event.clientX || 0,
-                        y: event.clientY || 0,
-                      })
-                    }
-                  }}
-                />
-                {hoveredWeek && (
-                  <ReviewTooltip weekData={hoveredWeek} position={tooltipPosition} />
-                )}
-              </div>
+              <TimeSeriesChart
+                data={filteredChartData}
+                stockLabel={stockLabel}
+                flowLabel={flowLabel}
+                reviewData={weeklyReviewData}
+                onMarkerClick={(weekData) => setSelectedWeek(weekData)}
+                onMarkerHover={() => {}}
+              />
             ) : (
               <div className="text-center py-12 text-slate-600">
                 No historical data available for this protocol.

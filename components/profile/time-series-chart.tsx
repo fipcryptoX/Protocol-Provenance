@@ -53,6 +53,7 @@ export function TimeSeriesChart({
     const weekMap = new Map<number, WeeklyDataPoint>()
 
     // First pass: aggregate stock and flow data by week
+    // For flow (revenue), sum up the daily values to get weekly total
     data.forEach((point) => {
       const weekStart = Math.floor(point.timestamp / WEEK_IN_SECONDS) * WEEK_IN_SECONDS
 
@@ -62,16 +63,16 @@ export function TimeSeriesChart({
           week: weekDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           weekTimestamp: weekStart,
           stockValue: point.stock,
-          flowValue: point.flow,
+          flowValue: point.flow || 0,
           reviewCount: 0,
           dominantSentiment: "NEUTRAL",
           sentiment: { positive: 0, neutral: 0, negative: 0 },
         })
       } else {
-        // Update with latest values if already exists
+        // For stock metrics, use latest value; for flow metrics, sum up the week
         const weekPoint = weekMap.get(weekStart)!
         if (point.stock !== null) weekPoint.stockValue = point.stock
-        if (point.flow !== null) weekPoint.flowValue = point.flow
+        if (point.flow !== null) weekPoint.flowValue = (weekPoint.flowValue || 0) + point.flow
       }
     })
 
@@ -256,16 +257,18 @@ export function TimeSeriesChart({
               const payload = props.payload[0].payload as WeeklyDataPoint
 
               return (
-                <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
-                  <p className="font-semibold text-slate-900 mb-2">{payload.week}</p>
-                  <div className="space-y-1">
+                <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-sm min-w-[280px]">
+                  <p className="font-semibold text-slate-900 mb-3">{payload.week}</p>
+
+                  <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-slate-600">{stockLabel}:</span>
                       <span className="text-slate-900 font-semibold">
                         {payload.stockValue !== null ? formatCurrency(payload.stockValue) : "N/A"}
                       </span>
                     </div>
-                    {payload.flowValue !== null && (
+
+                    {payload.flowValue !== null && payload.flowValue > 0 && (
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-slate-600">{flowLabel}:</span>
                         <span className="text-slate-900 font-semibold">
@@ -273,18 +276,42 @@ export function TimeSeriesChart({
                         </span>
                       </div>
                     )}
+
                     {payload.reviewCount > 0 && (
                       <>
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center justify-between gap-4 pt-1">
                           <span className="text-slate-600">Reviews:</span>
                           <span className="text-slate-900 font-semibold">
                             {payload.reviewCount}
                           </span>
                         </div>
-                        <div className="pt-1 text-xs text-slate-500">
-                          {payload.sentiment.positive > 0 && `✓ ${payload.sentiment.positive} positive `}
-                          {payload.sentiment.negative > 0 && `✗ ${payload.sentiment.negative} negative `}
-                          {payload.sentiment.neutral > 0 && `○ ${payload.sentiment.neutral} neutral`}
+
+                        {/* Sentiment badges */}
+                        <div className="flex gap-2 flex-wrap pt-1">
+                          {payload.sentiment.positive > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-full">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="text-xs font-semibold text-green-700">
+                                {payload.sentiment.positive} Positive
+                              </span>
+                            </div>
+                          )}
+                          {payload.sentiment.negative > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full">
+                              <div className="w-2 h-2 rounded-full bg-red-500" />
+                              <span className="text-xs font-semibold text-red-700">
+                                {payload.sentiment.negative} Negative
+                              </span>
+                            </div>
+                          )}
+                          {payload.sentiment.neutral > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 border border-yellow-200 rounded-full">
+                              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                              <span className="text-xs font-semibold text-yellow-700">
+                                {payload.sentiment.neutral} Neutral
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </>
                     )}
