@@ -207,10 +207,11 @@ export function TimeSeriesChart({
         </text>
 
         {/* Larger invisible hit area for clicking - must be last (on top) */}
+        {/* Use a minimum radius of 18px to ensure even tiny dots are easily clickable */}
         <circle
           cx={cx}
           cy={cy}
-          r={dotSize + 6}
+          r={Math.max(18, dotSize + 6)}
           fill="transparent"
           stroke="transparent"
           style={{ cursor: "pointer" }}
