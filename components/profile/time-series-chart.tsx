@@ -131,11 +131,11 @@ export function TimeSeriesChart({
   }, [data, reviewData])
 
   return (
-    <div className="w-full h-[500px] relative">
+    <div className="w-full h-[600px] relative">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={data}
-          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+          margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
         >
           <defs>
             {/* Define gradient for markers */}
@@ -206,80 +206,81 @@ export function TimeSeriesChart({
               const weekData = reviewMarkersByDate.get(payload.date)
               if (!weekData) return <></>
 
-              // Determine which sentiments to show (prioritize positive/negative over neutral)
+              // Determine dominant sentiment for single marker display
               const { positive, neutral, negative } = weekData.weekData.sentiment
-              const sentiments: Array<"POSITIVE" | "NEGATIVE" | "NEUTRAL"> = []
-
-              // Add sentiments in priority order
-              if (positive > 0) sentiments.push("POSITIVE")
-              if (negative > 0) sentiments.push("NEGATIVE")
-              if (neutral > 0 && sentiments.length < 2) sentiments.push("NEUTRAL")
-
-              // Show up to 2 markers
-              const markersToShow = sentiments.slice(0, 2)
               const totalReviews = weekData.reviewCount
-              const showCounter = totalReviews > 2
 
-              // Position markers above the line, stacked vertically
-              const baseY = cy - 20
-              const markerSpacing = 11 // Vertical spacing between markers
+              // Determine primary sentiment color
+              let primaryColor = getSentimentColor("NEUTRAL")
+              if (positive > negative && positive > neutral) {
+                primaryColor = getSentimentColor("POSITIVE")
+              } else if (negative > positive && negative > neutral) {
+                primaryColor = getSentimentColor("NEGATIVE")
+              }
+
+              // Check if there are mixed sentiments (both positive and negative)
+              const hasMixedSentiments = positive > 0 && negative > 0
+
+              // Position marker above the line - much closer and smaller like CMC
+              const markerY = cy - 15
+              const markerRadius = 4 // Smaller radius for cleaner look
 
               return (
                 <g key={`marker-${payload.date}`}>
-                  {/* Render up to 2 markers stacked vertically */}
-                  {markersToShow.map((sentiment, index) => {
-                    const markerY = baseY - (index * markerSpacing)
-                    const color = getSentimentColor(sentiment)
+                  {/* Single marker circle with shadow */}
+                  <circle
+                    cx={cx}
+                    cy={markerY}
+                    r={markerRadius + 1}
+                    fill="white"
+                    filter="url(#marker-shadow)"
+                    pointerEvents="none"
+                  />
+                  <circle
+                    cx={cx}
+                    cy={markerY}
+                    r={markerRadius}
+                    fill={primaryColor}
+                    stroke="white"
+                    strokeWidth={1.5}
+                    pointerEvents="none"
+                  />
 
-                    return (
-                      <g key={`${payload.date}-${sentiment}-${index}`}>
-                        {/* White background circle */}
-                        <circle
-                          cx={cx}
-                          cy={markerY}
-                          r={6}
-                          fill="white"
-                          filter="url(#marker-shadow)"
-                          pointerEvents="none"
-                        />
-                        {/* Colored marker circle */}
-                        <circle
-                          cx={cx}
-                          cy={markerY}
-                          r={5}
-                          fill={color}
-                          stroke="white"
-                          strokeWidth={1.5}
-                          pointerEvents="none"
-                        />
-                      </g>
-                    )
-                  })}
+                  {/* Small secondary indicator if mixed sentiments */}
+                  {hasMixedSentiments && (
+                    <circle
+                      cx={cx}
+                      cy={markerY}
+                      r={markerRadius / 2}
+                      fill={primaryColor === getSentimentColor("POSITIVE")
+                        ? getSentimentColor("NEGATIVE")
+                        : getSentimentColor("POSITIVE")}
+                      pointerEvents="none"
+                    />
+                  )}
 
-                  {/* Counter badge if more than 2 reviews */}
-                  {showCounter && (
+                  {/* Compact counter badge - only show if more than 1 review */}
+                  {totalReviews > 1 && (
                     <g>
-                      {/* Badge background */}
-                      <rect
-                        x={cx - 12}
-                        y={baseY - (markersToShow.length * markerSpacing) - 14}
-                        width={24}
-                        height={14}
-                        rx={7}
+                      {/* Compact badge background */}
+                      <circle
+                        cx={cx + 7}
+                        cy={markerY - 6}
+                        r={6}
                         fill="#64748b"
                         pointerEvents="none"
                       />
                       {/* Counter text */}
                       <text
-                        x={cx}
-                        y={baseY - (markersToShow.length * markerSpacing) - 6}
+                        x={cx + 7}
+                        y={markerY - 4}
                         textAnchor="middle"
                         fill="white"
-                        fontSize="9"
-                        fontWeight="600"
+                        fontSize="8"
+                        fontWeight="700"
                         pointerEvents="none"
                       >
-                        +{totalReviews - 2}
+                        {totalReviews}
                       </text>
                     </g>
                   )}
@@ -287,8 +288,8 @@ export function TimeSeriesChart({
                   {/* Invisible larger hit area for clicking */}
                   <circle
                     cx={cx}
-                    cy={baseY - (markerSpacing / 2)}
-                    r={22}
+                    cy={markerY}
+                    r={18}
                     fill="transparent"
                     style={{ cursor: "pointer" }}
                     onClick={(e) => {
