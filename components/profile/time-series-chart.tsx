@@ -159,7 +159,14 @@ export function TimeSeriesChart({
 
     const primaryColor = getDotColor(payload.dominantSentiment)
     const outlineColor = getOutlineColor(payload)
-    const dotSize = Math.min(6 + Math.log(payload.reviewCount) * 2, 12)
+
+    // Better proportional sizing: base size + linear scaling with cap
+    // Min size: 4px, Max size: 14px
+    const minSize = 4
+    const maxSize = 14
+    const maxReviewCount = Math.max(...reviewData.map(r => r.reviewCount))
+    const sizeRange = maxSize - minSize
+    const dotSize = minSize + (payload.reviewCount / maxReviewCount) * sizeRange
 
     return (
       <g key={`dot-${payload.week}`}>
