@@ -244,3 +244,82 @@ export function findChainRevenue(
 
   return 0
 }
+
+/**
+ * Historical data point
+ */
+export interface HistoricalDataPoint {
+  timestamp: number
+  value: number
+}
+
+/**
+ * Get historical stablecoin MCap for a specific chain
+ */
+export async function getHistoricalStablecoinMcapForChain(
+  chainName: string
+): Promise<HistoricalDataPoint[]> {
+  try {
+    const response = await fetch(
+      `https://stablecoins.llama.fi/stablecoincharts/${encodeURIComponent(chainName)}`,
+      { cache: "no-store" }
+    )
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch historical stablecoin data for ${chainName}: ${response.status}`)
+      return []
+    }
+
+    const data = await response.json()
+
+    if (!Array.isArray(data)) {
+      console.warn(`Invalid stablecoin data format for ${chainName}`)
+      return []
+    }
+
+    // Convert to standard format
+    return data.map((point: any) => ({
+      timestamp: point.date || point.timestamp,
+      value: point.totalCirculating?.peggedUSD || 0,
+    }))
+  } catch (error) {
+    console.error(`Error fetching historical stablecoin data for ${chainName}:`, error)
+    return []
+  }
+}
+
+/**
+ * Get historical app revenue for a specific chain
+ */
+export async function getHistoricalRevenueForChain(
+  chainName: string
+): Promise<HistoricalDataPoint[]> {
+  try {
+    const response = await fetch(
+      `https://api.llama.fi/overview/fees/${encodeURIComponent(chainName)}`,
+      { cache: "no-store" }
+    )
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch historical revenue for ${chainName}: ${response.status}`)
+      return []
+    }
+
+    const data = await response.json()
+
+    // Extract totalDataChart which contains [timestamp, value] pairs
+    if (!data.totalDataChart || !Array.isArray(data.totalDataChart)) {
+      console.warn(`No totalDataChart found for ${chainName}`)
+      return []
+    }
+
+    // Convert [timestamp, value] pairs to objects
+    return data.totalDataChart.map(([timestamp, value]: [number, number]) => ({
+      timestamp,
+      value,
+    }))
+  } catch (error) {
+    console.error(`Error fetching historical revenue for ${chainName}:`, error)
+    return []
+  }
+}

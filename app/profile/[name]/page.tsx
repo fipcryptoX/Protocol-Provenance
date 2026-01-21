@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { TimeSeriesChart } from "@/components/profile/time-series-chart"
 import { TimeRangeSelector } from "@/components/profile/time-range-selector"
 import { ReviewModal } from "@/components/profile/review-modal"
@@ -19,11 +20,17 @@ import {
 import {
   getHistoricalTVL,
   getHistoricalFees,
+  getHistoricalStablecoinMcap,
   getProtocolDetails,
   HistoricalDataPoint,
 } from "@/lib/api/defillama"
 import {
-  getReviewsByTwitter,
+  fetchChainRevenue,
+  getHistoricalStablecoinMcapForChain,
+  getHistoricalRevenueForChain,
+} from "@/lib/api/defillama-chains"
+import {
+  getAllReviewsByTwitter,
   EthosReview,
 } from "@/lib/api/ethos"
 import { cachedFetch } from "@/lib/cache"
@@ -35,7 +42,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const protocolName = params.name as string
 
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("All")
+  const [selectedRange, setSelectedRange] = useState<TimeRange>("1Y")
   const [stockData, setStockData] = useState<HistoricalDataPoint[]>([])
   const [flowData, setFlowData] = useState<HistoricalDataPoint[]>([])
   const [reviews, setReviews] = useState<EthosReview[]>([])
@@ -65,49 +72,79 @@ export default function ProfilePage() {
 
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
-        // Fetch protocol details from DeFiLlama to get Twitter username
-        const protocolDetails = await cachedFetch(
-          `protocol-details-${defillamaSlug}`,
-          () => getProtocolDetails(defillamaSlug),
-          900000 // 15 min cache
-        )
+        // Detect if this is a chain (common chain names)
+        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+        const isChain = commonChains.includes(protocolName.toLowerCase())
+
+        // Twitter username resolution with hardcoded overrides for specific entities
+        const twitterOverrides: Record<string, string> = {
+          'base': 'base',
+          'eigencloud': 'eigencloud',
+        }
+
+        // Fetch all data in parallel for maximum speed
+        const [protocolDetails, metricsData] = await Promise.all([
+          // Fetch protocol details
+          cachedFetch(
+            `protocol-details-${defillamaSlug}`,
+            () => getProtocolDetails(defillamaSlug),
+            900000 // 15 min cache
+          ),
+          // Fetch metrics based on chain vs protocol
+          isChain
+            ? Promise.all([
+                cachedFetch(
+                  `stablecoin-mcap-${protocolName}`,
+                  () => getHistoricalStablecoinMcapForChain(protocolName),
+                  900000
+                ),
+                cachedFetch(
+                  `revenue-${protocolName}`,
+                  () => getHistoricalRevenueForChain(protocolName),
+                  900000
+                )
+              ])
+            : Promise.all([
+                cachedFetch(
+                  `tvl-${protocolName}`,
+                  () => getHistoricalTVL(defillamaSlug),
+                  900000
+                ),
+                cachedFetch(
+                  `fees-${protocolName}`,
+                  () => getHistoricalFees(defillamaSlug),
+                  900000
+                ),
+              ])
+        ])
 
         console.log(`Protocol details:`, protocolDetails)
 
-        // Fetch historical TVL and fees in parallel
-        const [tvlData, feesData] = await Promise.all([
-          cachedFetch(
-            `tvl-${protocolName}`,
-            () => getHistoricalTVL(defillamaSlug),
-            900000 // 15 min cache
-          ),
-          cachedFetch(
-            `fees-${protocolName}`,
-            () => getHistoricalFees(defillamaSlug),
-            900000 // 15 min cache
-          ),
-        ])
-
-        setStockData(tvlData)
-        setFlowData(feesData)
+        // Set metrics data
+        const [stockMetrics, flowMetrics] = metricsData
+        setStockData(stockMetrics)
+        setFlowData(flowMetrics)
 
         // Determine which Twitter username to use:
-        // 1. First priority: Twitter from DeFiLlama API
-        // 2. Fallback: Twitter from protocol config (for manually configured protocols)
-        const twitterUsername = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername
+        // 1. First priority: Hardcoded overrides
+        // 2. Second: Twitter from DeFiLlama API
+        // 3. Fallback: Twitter from protocol config (for manually configured protocols)
+        const twitterUsername = twitterOverrides[protocolName.toLowerCase()] ||
+                                protocolDetails?.twitter ||
+                                protocolConfig?.ethos.twitterUsername
 
-        // Fetch Ethos reviews using Twitter username
+        // Fetch Ethos reviews using Twitter username (parallel with metrics)
         if (twitterUsername) {
-          console.log(`Fetching reviews for @${twitterUsername} (from ${protocolDetails?.twitter ? 'DeFiLlama' : 'config'})`)
-          const { reviews: reviewsData } = await cachedFetch(
-            `reviews-twitter-${twitterUsername}`,
-            () => getReviewsByTwitter(twitterUsername, 200),
+          console.log(`Fetching ALL reviews for @${twitterUsername}`)
+          const reviewsData = await cachedFetch(
+            `all-reviews-twitter-${twitterUsername}`,
+            () => getAllReviewsByTwitter(twitterUsername, 1000),
             300000 // 5 min cache
           )
           setReviews(reviewsData)
           console.log(`Fetched ${reviewsData.length} reviews`)
         } else {
-          console.warn(`No Twitter username found for ${protocolName} (not in DeFiLlama or config), skipping reviews`)
+          console.warn(`No Twitter username found for ${protocolName}, skipping reviews`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)
@@ -232,12 +269,37 @@ export default function ProfilePage() {
       }
     })
 
-    return Array.from(weekMap.values()).sort((a, b) => a.weekStart - b.weekStart)
+    const result = Array.from(weekMap.values()).sort((a, b) => a.weekStart - b.weekStart)
+    console.log(`Aggregated ${reviews.length} reviews into ${result.length} weeks`)
+    if (result.length > 0) {
+      console.log(`First week:`, {
+        weekStart: new Date(result[0].weekStart * 1000).toISOString(),
+        reviewCount: result[0].reviewCount,
+        dominantSentiment: result[0].dominantSentiment
+      })
+      console.log(`Last week:`, {
+        weekStart: new Date(result[result.length - 1].weekStart * 1000).toISOString(),
+        reviewCount: result[result.length - 1].reviewCount,
+        dominantSentiment: result[result.length - 1].dominantSentiment
+      })
+
+      // Log the date range of actual reviews
+      const reviewDates = reviews.map(r => new Date(r.createdAt).getTime()).sort((a, b) => a - b)
+      console.log(`Review date range:`, {
+        earliest: new Date(reviewDates[0]).toISOString(),
+        latest: new Date(reviewDates[reviewDates.length - 1]).toISOString(),
+        totalReviews: reviews.length
+      })
+    }
+    return result
   }, [reviews])
 
-  // Get metric labels (defaulting to generic if category unknown)
-  const stockLabel = "TVL"
-  const flowLabel = "Revenue (30d)"
+  // Get metric labels based on whether it's a chain or protocol
+  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+  const isChain = commonChains.includes(protocolName.toLowerCase())
+
+  const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
+  const flowLabel = isChain ? "App Revenue (24h)" : "Revenue (30d)"
 
   // Handle loading state
   if (loading) {
@@ -256,10 +318,12 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
         <div className="max-w-4xl mx-auto">
-          <Button variant="outline" onClick={() => router.push("/")} className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
+          <Link href="/">
+            <Button variant="outline" className="mb-6">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
@@ -274,10 +338,12 @@ export default function ProfilePage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => router.push("/")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
+          <Link href="/">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
           <TimeRangeSelector
             selectedRange={selectedRange}
             onRangeChange={setSelectedRange}
