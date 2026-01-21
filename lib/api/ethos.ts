@@ -278,3 +278,330 @@ export async function getProjectAvatarUrl(
     return null
   }
 }
+
+/**
+ * Review sentiment types
+ */
+export type ReviewSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE"
+
+/**
+ * Review activity from Ethos
+ */
+export interface EthosReview {
+  id: string
+  createdAt: string
+  content: string
+  reviewScore: ReviewSentiment
+  author: {
+    id: number
+    displayName?: string
+    username?: string
+    avatarUrl?: string
+    score: number
+  }
+}
+
+/**
+ * Response from Ethos activities endpoint
+ */
+export interface EthosActivitiesResponse {
+  values: Array<{
+    type: string
+    createdAt: string
+    content?: string
+    reviewScore?: ReviewSentiment
+    author?: {
+      id?: number
+      displayName?: string
+      username?: string
+      avatarUrl?: string
+      score?: number
+    }
+    [key: string]: any
+  }>
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * Get reviews for a protocol/project by userkey
+ *
+ * @param userkey - The Ethos userkey for the protocol
+ * @param limit - Number of reviews to fetch (default: 100)
+ * @param offset - Offset for pagination (default: 0)
+ * @returns Array of reviews and pagination info
+ */
+export async function getProtocolReviews(
+  userkey: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<{ reviews: EthosReview[]; total: number }> {
+  try {
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/activities/profile/received`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+        },
+        body: JSON.stringify({
+          userkey,
+          filter: ["review"],
+          orderBy: {
+            field: "timestamp",
+            direction: "desc",
+          },
+          limit,
+          offset,
+          excludeSpam: true,
+        }),
+        next: { revalidate: 300 }, // 5 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch reviews for ${userkey}: ${response.status}`
+      )
+      return { reviews: [], total: 0 }
+    }
+
+    const data: EthosActivitiesResponse = await response.json()
+
+    // Filter and transform review activities
+    const reviews: EthosReview[] = data.values
+      .filter((activity) => activity.type === "review" && activity.content)
+      .map((activity) => ({
+        id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
+        createdAt: activity.createdAt,
+        content: activity.content || "",
+        reviewScore: activity.reviewScore || "NEUTRAL",
+        author: {
+          id: activity.author?.id || 0,
+          displayName: activity.author?.displayName,
+          username: activity.author?.username,
+          avatarUrl: activity.author?.avatarUrl,
+          score: activity.author?.score || 0,
+        },
+      }))
+
+    return {
+      reviews,
+      total: data.total,
+    }
+  } catch (error) {
+    console.error(`Error fetching reviews for ${userkey}:`, error)
+    return { reviews: [], total: 0 }
+  }
+}
+
+/**
+ * Ethos user response from /user/by/x endpoint
+ */
+export interface EthosUserByTwitterResponse {
+  userkeys: string[]
+  id: number
+  profileId: number
+  username?: string
+  displayName?: string
+  avatarUrl?: string
+  score: number
+  status?: string
+  [key: string]: any
+}
+
+/**
+ * Get Ethos user by Twitter username
+ *
+ * @param twitterUsername - The Twitter/X username (without @)
+ * @returns User data including userkeys array
+ */
+export async function getUserByTwitter(
+  twitterUsername: string
+): Promise<EthosUserByTwitterResponse | null> {
+  try {
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/user/by/x/${twitterUsername}`,
+      {
+        headers: {
+          Accept: "*/*",
+        },
+        cache: "no-store", // Client-side compatible
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch Ethos user for Twitter @${twitterUsername}: ${response.status}`
+      )
+      return null
+    }
+
+    const data: EthosUserByTwitterResponse = await response.json()
+
+    if (!data.userkeys || data.userkeys.length === 0) {
+      console.warn(`No userkeys found for Twitter @${twitterUsername}`)
+      return null
+    }
+
+    console.log(
+      `Found Ethos user for @${twitterUsername}: ${data.userkeys[0]}, score: ${data.score}`
+    )
+
+    return data
+  } catch (error) {
+    console.error(`Error fetching Ethos user for @${twitterUsername}:`, error)
+    return null
+  }
+}
+
+/**
+ * Get reviews for a user by their Twitter username
+ *
+ * @param twitterUsername - The Twitter/X username (without @)
+ * @param limit - Number of reviews to fetch (default: 100)
+ * @param offset - Offset for pagination (default: 0)
+ * @returns Array of reviews and pagination info
+ */
+export async function getReviewsByTwitter(
+  twitterUsername: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<{ reviews: EthosReview[]; total: number }> {
+  try {
+    // First, get the user's userkey
+    const user = await getUserByTwitter(twitterUsername)
+
+    if (!user || !user.userkeys || user.userkeys.length === 0) {
+      console.warn(`Cannot fetch reviews: no userkey for @${twitterUsername}`)
+      return { reviews: [], total: 0 }
+    }
+
+    // Use the first userkey to fetch reviews
+    const userkey = user.userkeys[0]
+    console.log(`Using userkey: ${userkey} for @${twitterUsername}`)
+
+    const requestBody = {
+      userkey,
+      filter: ["review"],
+      limit,
+      offset,
+      excludeSpam: true,
+    }
+    console.log(`Fetching reviews with body:`, JSON.stringify(requestBody, null, 2))
+
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/activities/profile/received`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+        },
+        body: JSON.stringify(requestBody),
+        cache: "no-store", // Client-side compatible
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch reviews for @${twitterUsername}: ${response.status}`
+      )
+      return { reviews: [], total: 0 }
+    }
+
+    const data: EthosActivitiesResponse = await response.json()
+
+    console.log(
+      `Raw API response for @${twitterUsername}:`,
+      `${data.values.length} activities, ${data.total} total`
+    )
+    console.log(`Activity types:`, data.values.map(v => v.type).join(', '))
+
+    // Filter and transform review activities
+    const reviews: EthosReview[] = data.values
+      .filter((activity) => {
+        const isReview = activity.type === "review"
+        const hasContent = !!activity.content
+        if (!isReview) console.log(`Skipping non-review activity: ${activity.type}`)
+        if (isReview && !hasContent) console.log(`Skipping review without content`)
+        return isReview && hasContent
+      })
+      .map((activity) => ({
+        id: activity.id || `${activity.createdAt}-${activity.author?.id}`,
+        createdAt: activity.createdAt,
+        content: activity.content || "",
+        reviewScore: activity.reviewScore || "NEUTRAL",
+        author: {
+          id: activity.author?.id || 0,
+          displayName: activity.author?.displayName,
+          username: activity.author?.username,
+          avatarUrl: activity.author?.avatarUrl,
+          score: activity.author?.score || 0,
+        },
+      }))
+
+    console.log(
+      `Fetched ${reviews.length} reviews for @${twitterUsername} (${data.total} total, ${data.values.length} activities returned)`
+    )
+
+    return {
+      reviews,
+      total: data.total,
+    }
+  } catch (error) {
+    console.error(`Error fetching reviews for @${twitterUsername}:`, error)
+    return { reviews: [], total: 0 }
+  }
+}
+
+/**
+ * Get ALL historical reviews for a user by their Twitter username
+ * Automatically paginates through all results
+ *
+ * @param twitterUsername - The Twitter/X username (without @)
+ * @param maxReviews - Maximum number of reviews to fetch (default: 500)
+ * @returns Array of all reviews
+ */
+export async function getAllReviewsByTwitter(
+  twitterUsername: string,
+  maxReviews: number = 500
+): Promise<EthosReview[]> {
+  const allReviews: EthosReview[] = []
+  let offset = 0
+  const limit = 50
+  let total = 0
+
+  try {
+    // Fetch first batch to get total count
+    const firstBatch = await getReviewsByTwitter(twitterUsername, limit, offset)
+    allReviews.push(...firstBatch.reviews)
+    total = firstBatch.total
+    offset += limit
+
+    // Continue fetching until we have all reviews or hit maxReviews
+    while (offset < total && allReviews.length < maxReviews) {
+      const batch = await getReviewsByTwitter(twitterUsername, limit, offset)
+      allReviews.push(...batch.reviews)
+      offset += limit
+
+      if (batch.reviews.length === 0) {
+        break // No more reviews
+      }
+    }
+
+    console.log(
+      `Fetched ${allReviews.length} total reviews for @${twitterUsername}`
+    )
+
+    return allReviews
+  } catch (error) {
+    console.error(
+      `Error fetching all reviews for @${twitterUsername}:`,
+      error
+    )
+    return allReviews // Return what we have so far
+  }
+}

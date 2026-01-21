@@ -1,4 +1,7 @@
+"use client"
+
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CategoryBadge, ProtocolTag } from "@/components/ui/protocol-tag"
@@ -31,6 +34,8 @@ export function AssetCard({
   flowMetric,
   className,
 }: AssetCardProps) {
+  const router = useRouter()
+
   const formatUSD = (value: number): string => {
     if (value >= 1_000_000_000) {
       return `$${(value / 1_000_000_000).toFixed(2)}B`
@@ -44,8 +49,20 @@ export function AssetCard({
     return `$${value.toFixed(2)}`
   }
 
+  const handleClick = () => {
+    // Convert name to URL-friendly slug
+    const slug = name.toLowerCase().replace(/\s+/g, "-")
+    router.push(`/profile/${slug}`)
+  }
+
   return (
-    <Card className={cn("w-full max-w-md", className)}>
+    <Card
+      className={cn(
+        "w-full max-w-md cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]",
+        className
+      )}
+      onClick={handleClick}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -101,3 +101,46 @@ export type FilterState = {
   ethosRange: [number, number];
   stockRange: [number, number];
 };
+
+/**
+ * Time range options for charts
+ */
+export type TimeRange = "1M" | "3M" | "6M" | "1Y" | "All";
+
+/**
+ * Combined data point for chart display
+ */
+export interface ChartDataPoint {
+  timestamp: number
+  date: string
+  stock: number | null
+  flow: number | null
+}
+
+/**
+ * Weekly review aggregation for markers
+ */
+export interface WeeklyReviewData {
+  weekStart: number
+  weekEnd: number
+  reviewCount: number
+  sentiment: {
+    positive: number
+    neutral: number
+    negative: number
+  }
+  dominantSentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE"
+  reviews: Array<{
+    id: string
+    createdAt: string
+    content: string
+    reviewScore: "POSITIVE" | "NEUTRAL" | "NEGATIVE"
+    author: {
+      id: number
+      displayName?: string
+      username?: string
+      avatarUrl?: string
+      score: number
+    }
+  }>
+}
