@@ -22,12 +22,12 @@ import {
   HistoricalDataPoint,
 } from "@/lib/api/defillama"
 import {
-  getProtocolReviews,
-  getUserkeyFromProjectName,
+  getReviewsByTwitter,
   EthosReview,
 } from "@/lib/api/ethos"
 import { cachedFetch } from "@/lib/cache"
 import { CATEGORY_METRICS } from "@/types"
+import { PROTOCOLS } from "@/lib/protocol-config"
 
 export default function ProfilePage() {
   const params = useParams()
@@ -51,16 +51,26 @@ export default function ProfilePage() {
       setError(null)
 
       try {
+        // Find the protocol config by name
+        const protocolId = protocolName.toLowerCase().replace(/\s+/g, "-")
+        const protocolConfig = Object.values(PROTOCOLS).find(
+          (p) => p.id === protocolId || p.displayName.toLowerCase() === protocolName.toLowerCase()
+        )
+
+        if (!protocolConfig) {
+          throw new Error(`Protocol configuration not found for: ${protocolName}`)
+        }
+
         // Fetch historical TVL and fees in parallel
         const [tvlData, feesData] = await Promise.all([
           cachedFetch(
             `tvl-${protocolName}`,
-            () => getHistoricalTVL(protocolName),
+            () => getHistoricalTVL(protocolConfig.defillama.protocolSlug),
             900000 // 15 min cache
           ),
           cachedFetch(
             `fees-${protocolName}`,
-            () => getHistoricalFees(protocolName),
+            () => getHistoricalFees(protocolConfig.defillama.protocolSlug),
             900000 // 15 min cache
           ),
         ])
@@ -68,20 +78,16 @@ export default function ProfilePage() {
         setStockData(tvlData)
         setFlowData(feesData)
 
-        // Fetch Ethos reviews
-        const userkey = await cachedFetch(
-          `userkey-${protocolName}`,
-          () => getUserkeyFromProjectName(protocolName),
-          900000 // 15 min cache
-        )
-
-        if (userkey) {
+        // Fetch Ethos reviews using Twitter username
+        if (protocolConfig.ethos.twitterUsername) {
           const { reviews: reviewsData } = await cachedFetch(
-            `reviews-${userkey}`,
-            () => getProtocolReviews(userkey, 200),
+            `reviews-twitter-${protocolConfig.ethos.twitterUsername}`,
+            () => getReviewsByTwitter(protocolConfig.ethos.twitterUsername!, 200),
             300000 // 5 min cache
           )
           setReviews(reviewsData)
+        } else {
+          console.warn(`No Twitter username configured for ${protocolName}`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)
