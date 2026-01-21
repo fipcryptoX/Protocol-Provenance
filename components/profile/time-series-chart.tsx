@@ -2,20 +2,21 @@
 
 import { useMemo } from "react"
 import {
-  ComposedChart,
+  LineChart,
   Line,
-  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
   ResponsiveContainer,
-  ReferenceDot,
-  ZAxis,
 } from "recharts"
 import { ChartDataPoint, WeeklyReviewData } from "@/types"
 import { formatCurrency } from "@/lib/utils"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartConfig,
+} from "@/components/ui/chart"
 
 interface TimeSeriesChartProps {
   data: ChartDataPoint[]
@@ -26,6 +27,16 @@ interface TimeSeriesChartProps {
   onMarkerHover: (weekData: WeeklyReviewData | null, event?: any) => void
 }
 
+interface WeeklyDataPoint {
+  week: string
+  weekTimestamp: number
+  stockValue: number | null
+  reviewCount: number
+  dominantSentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL"
+  sentiment: { positive: number; neutral: number; negative: number }
+  weekData?: WeeklyReviewData
+}
+
 export function TimeSeriesChart({
   data,
   stockLabel,
@@ -34,32 +45,46 @@ export function TimeSeriesChart({
   onMarkerClick,
   onMarkerHover,
 }: TimeSeriesChartProps) {
-  // Get sentiment color
-  const getSentimentColor = (sentiment: "POSITIVE" | "NEUTRAL" | "NEGATIVE") => {
-    switch (sentiment) {
-      case "POSITIVE":
-        return "#22c55e" // green-500
-      case "NEGATIVE":
-        return "#ef4444" // red-500
-      case "NEUTRAL":
-      default:
-        return "#eab308" // yellow-500
-    }
-  }
+  // Aggregate data by week
+  const weeklyData = useMemo((): WeeklyDataPoint[] => {
+    // Create a map of weeks
+    const WEEK_IN_SECONDS = 7 * 24 * 60 * 60
+    const weekMap = new Map<number, WeeklyDataPoint>()
 
-  // Calculate marker size based on review count
-  const getMarkerSize = (count: number) => {
-    const baseSize = 8  // Increased from 6 for better visibility
-    const maxSize = 24  // Increased from 20
-    const scaleFactor = Math.log(count + 1) * 4  // Increased scaling
-    return Math.min(baseSize + scaleFactor, maxSize)
-  }
+    // First pass: aggregate stock data by week
+    data.forEach((point) => {
+      if (point.stock === null) return
 
-  // Format date for X-axis
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000)
-    return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
-  }
+      const weekStart = Math.floor(point.timestamp / WEEK_IN_SECONDS) * WEEK_IN_SECONDS
+
+      if (!weekMap.has(weekStart)) {
+        const weekDate = new Date(weekStart * 1000)
+        weekMap.set(weekStart, {
+          week: weekDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          weekTimestamp: weekStart,
+          stockValue: point.stock,
+          reviewCount: 0,
+          dominantSentiment: "NEUTRAL",
+          sentiment: { positive: 0, neutral: 0, negative: 0 },
+        })
+      }
+    })
+
+    // Second pass: add review data
+    reviewData.forEach((review) => {
+      const weekStart = Math.floor(review.weekStart / WEEK_IN_SECONDS) * WEEK_IN_SECONDS
+      const weekPoint = weekMap.get(weekStart)
+
+      if (weekPoint) {
+        weekPoint.reviewCount = review.reviewCount
+        weekPoint.dominantSentiment = review.dominantSentiment
+        weekPoint.sentiment = review.sentiment
+        weekPoint.weekData = review
+      }
+    })
+
+    return Array.from(weekMap.values()).sort((a, b) => a.weekTimestamp - b.weekTimestamp)
+  }, [data, reviewData])
 
   // Format large numbers for Y-axis
   const formatYAxis = (value: number) => {
@@ -75,87 +100,116 @@ export function TimeSeriesChart({
     return `$${value}`
   }
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload || payload.length === 0) return null
+  // Get dot color based on dominant sentiment
+  const getDotColor = (sentiment: "POSITIVE" | "NEGATIVE" | "NEUTRAL") => {
+    switch (sentiment) {
+      case "POSITIVE":
+        return "#22c55e" // green-500
+      case "NEGATIVE":
+        return "#ef4444" // red-500
+      case "NEUTRAL":
+      default:
+        return "#eab308" // yellow-500
+    }
+  }
+
+  // Get outline colors for mixed sentiments
+  const getOutlineColor = (weekPoint: WeeklyDataPoint) => {
+    const { positive, neutral, negative } = weekPoint.sentiment
+
+    // If predominantly positive
+    if (positive > negative && positive > neutral) {
+      if (negative > 0) return "#ef4444" // Show red outline if there are negatives
+      if (neutral > 0) return "#eab308" // Show yellow outline if there are neutrals
+    }
+
+    // If predominantly negative
+    if (negative > positive && negative > neutral) {
+      if (positive > 0) return "#22c55e" // Show green outline if there are positives
+      if (neutral > 0) return "#eab308" // Show yellow outline if there are neutrals
+    }
+
+    return null
+  }
+
+  const chartConfig = {
+    stock: {
+      label: stockLabel,
+      color: "#3b82f6",
+    },
+  } satisfies ChartConfig
+
+  // Custom dot renderer
+  const renderDot = (props: any) => {
+    const { cx, cy, payload } = props
+
+    if (!payload.reviewCount || payload.reviewCount === 0) {
+      return null
+    }
+
+    const primaryColor = getDotColor(payload.dominantSentiment)
+    const outlineColor = getOutlineColor(payload)
+    const dotSize = Math.min(6 + Math.log(payload.reviewCount) * 2, 12)
 
     return (
-      <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
-        <p className="font-semibold text-slate-900 mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-4">
-            <span style={{ color: entry.color }} className="font-medium">
-              {entry.name}:
-            </span>
-            <span className="text-slate-900 font-semibold">
-              {entry.value !== null ? formatCurrency(entry.value) : "N/A"}
-            </span>
-          </div>
-        ))}
-      </div>
+      <g key={`dot-${payload.week}`}>
+        {/* Outer circle for mixed sentiment outline */}
+        {outlineColor && (
+          <circle
+            cx={cx}
+            cy={cy}
+            r={dotSize + 2}
+            fill={outlineColor}
+            opacity={0.5}
+          />
+        )}
+
+        {/* Main sentiment dot */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={dotSize}
+          fill={primaryColor}
+          stroke="white"
+          strokeWidth={2}
+          style={{ cursor: "pointer" }}
+          onClick={() => payload.weekData && onMarkerClick(payload.weekData)}
+          onMouseEnter={(e: any) => payload.weekData && onMarkerHover(payload.weekData, e)}
+          onMouseLeave={() => onMarkerHover(null)}
+        />
+
+        {/* Review count text */}
+        <text
+          x={cx}
+          y={cy + dotSize + 12}
+          textAnchor="middle"
+          fill="#64748b"
+          fontSize="10"
+          fontWeight="600"
+        >
+          {payload.reviewCount}
+        </text>
+      </g>
     )
   }
 
-  // Create scatter data for review markers and a lookup map for fast access
-  const { reviewMarkers, reviewMarkersByDate } = useMemo(() => {
-    const markers = reviewData.map((weekData) => {
-      // Find the closest data point for this week
-      const dataPoint = data.find(
-        (point) =>
-          point.timestamp >= weekData.weekStart &&
-          point.timestamp <= weekData.weekEnd
-      )
-
-      if (!dataPoint || dataPoint.stock === null) return null
-
-      return {
-        date: dataPoint.date,
-        timestamp: weekData.weekStart,
-        y: dataPoint.stock,
-        reviewCount: weekData.reviewCount,
-        sentiment: weekData.dominantSentiment,
-        weekData,
-      }
-    }).filter(Boolean)
-
-    // Create a Map for O(1) lookup instead of O(n) find
-    const markerMap = new Map()
-    markers.forEach(marker => {
-      if (marker) markerMap.set(marker.date, marker)
-    })
-
-    return {
-      reviewMarkers: markers,
-      reviewMarkersByDate: markerMap
-    }
-  }, [data, reviewData])
-
   return (
-    <div className="w-full h-[600px] relative">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={data}
-          margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
+    <div className="w-full">
+      <ChartContainer config={chartConfig} className="h-[600px] w-full">
+        <LineChart
+          data={weeklyData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
         >
-          <defs>
-            {/* Define gradient for markers */}
-            <filter id="marker-shadow">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3"/>
-            </filter>
-          </defs>
-
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
           <XAxis
-            dataKey="date"
+            dataKey="week"
             stroke="#64748b"
             style={{ fontSize: "12px" }}
             tick={{ fill: "#64748b" }}
           />
 
-          {/* Left Y-axis for Stock */}
           <YAxis
-            yAxisId="left"
             stroke="#3b82f6"
             tickFormatter={formatYAxis}
             style={{ fontSize: "12px" }}
@@ -168,163 +222,56 @@ export function TimeSeriesChart({
             }}
           />
 
-          {/* Right Y-axis for Flow */}
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            stroke="#f97316"
-            tickFormatter={formatYAxis}
-            style={{ fontSize: "12px" }}
-            tick={{ fill: "#f97316" }}
-            label={{
-              value: flowLabel,
-              angle: 90,
-              position: "insideRight",
-              style: { fill: "#f97316", fontWeight: 600 },
-            }}
-          />
-
-          <Tooltip content={<CustomTooltip />} />
-
-          <Legend
-            wrapperStyle={{ paddingTop: "20px" }}
-            iconType="line"
-          />
-
-          {/* Stock metric line */}
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="stock"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={(props: any) => {
-              const { cx, cy, payload } = props
-              if (!cx || !cy) return <></>
-
-              // Fast O(1) lookup instead of O(n) find
-              const weekData = reviewMarkersByDate.get(payload.date)
-              if (!weekData) return <></>
-
-              // Determine dominant sentiment for single marker display
-              const { positive, neutral, negative } = weekData.weekData.sentiment
-              const totalReviews = weekData.reviewCount
-
-              // Determine primary sentiment color
-              let primaryColor = getSentimentColor("NEUTRAL")
-              if (positive > negative && positive > neutral) {
-                primaryColor = getSentimentColor("POSITIVE")
-              } else if (negative > positive && negative > neutral) {
-                primaryColor = getSentimentColor("NEGATIVE")
+          <ChartTooltip
+            content={(props) => {
+              if (!props.active || !props.payload || props.payload.length === 0) {
+                return null
               }
 
-              // Check if there are mixed sentiments (both positive and negative)
-              const hasMixedSentiments = positive > 0 && negative > 0
-
-              // Position marker above the line - much closer and smaller like CMC
-              const markerY = cy - 15
-              const markerRadius = 4 // Smaller radius for cleaner look
+              const payload = props.payload[0].payload as WeeklyDataPoint
 
               return (
-                <g key={`marker-${payload.date}`}>
-                  {/* Single marker circle with shadow */}
-                  <circle
-                    cx={cx}
-                    cy={markerY}
-                    r={markerRadius + 1}
-                    fill="white"
-                    filter="url(#marker-shadow)"
-                    pointerEvents="none"
-                  />
-                  <circle
-                    cx={cx}
-                    cy={markerY}
-                    r={markerRadius}
-                    fill={primaryColor}
-                    stroke="white"
-                    strokeWidth={1.5}
-                    pointerEvents="none"
-                  />
-
-                  {/* Small secondary indicator if mixed sentiments */}
-                  {hasMixedSentiments && (
-                    <circle
-                      cx={cx}
-                      cy={markerY}
-                      r={markerRadius / 2}
-                      fill={primaryColor === getSentimentColor("POSITIVE")
-                        ? getSentimentColor("NEGATIVE")
-                        : getSentimentColor("POSITIVE")}
-                      pointerEvents="none"
-                    />
-                  )}
-
-                  {/* Compact counter badge - only show if more than 1 review */}
-                  {totalReviews > 1 && (
-                    <g>
-                      {/* Compact badge background */}
-                      <circle
-                        cx={cx + 7}
-                        cy={markerY - 6}
-                        r={6}
-                        fill="#64748b"
-                        pointerEvents="none"
-                      />
-                      {/* Counter text */}
-                      <text
-                        x={cx + 7}
-                        y={markerY - 4}
-                        textAnchor="middle"
-                        fill="white"
-                        fontSize="8"
-                        fontWeight="700"
-                        pointerEvents="none"
-                      >
-                        {totalReviews}
-                      </text>
-                    </g>
-                  )}
-
-                  {/* Invisible larger hit area for clicking */}
-                  <circle
-                    cx={cx}
-                    cy={markerY}
-                    r={18}
-                    fill="transparent"
-                    style={{ cursor: "pointer" }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onMarkerClick(weekData.weekData)
-                    }}
-                    onMouseEnter={(e: any) => {
-                      e.stopPropagation()
-                      onMarkerHover(weekData.weekData, e)
-                    }}
-                    onMouseLeave={(e) => {
-                      e.stopPropagation()
-                      onMarkerHover(null)
-                    }}
-                  />
-                </g>
+                <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
+                  <p className="font-semibold text-slate-900 mb-2">{payload.week}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-slate-600">{stockLabel}:</span>
+                      <span className="text-slate-900 font-semibold">
+                        {payload.stockValue !== null ? formatCurrency(payload.stockValue) : "N/A"}
+                      </span>
+                    </div>
+                    {payload.reviewCount > 0 && (
+                      <>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-slate-600">Reviews:</span>
+                          <span className="text-slate-900 font-semibold">
+                            {payload.reviewCount}
+                          </span>
+                        </div>
+                        <div className="pt-1 text-xs text-slate-500">
+                          {payload.sentiment.positive > 0 && `✓ ${payload.sentiment.positive} positive `}
+                          {payload.sentiment.negative > 0 && `✗ ${payload.sentiment.negative} negative `}
+                          {payload.sentiment.neutral > 0 && `○ ${payload.sentiment.neutral} neutral`}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               )
             }}
-            name={stockLabel}
-            connectNulls
           />
 
-          {/* Flow metric line */}
           <Line
-            yAxisId="right"
             type="monotone"
-            dataKey="flow"
-            stroke="#f97316"
+            dataKey="stockValue"
+            stroke="#3b82f6"
             strokeWidth={2}
-            dot={false}
-            name={flowLabel}
+            dot={renderDot}
             connectNulls
+            name={stockLabel}
           />
-        </ComposedChart>
-      </ResponsiveContainer>
+        </LineChart>
+      </ChartContainer>
     </div>
   )
 }
