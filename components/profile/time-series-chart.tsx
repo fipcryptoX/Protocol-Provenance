@@ -151,7 +151,7 @@ export function TimeSeriesChart({
 
   // Custom dot renderer
   const renderDot = (props: any) => {
-    const { cx, cy, payload } = props
+    const { cx, cy, payload, index } = props
 
     if (!payload.reviewCount || payload.reviewCount === 0) {
       return <></>
@@ -169,7 +169,7 @@ export function TimeSeriesChart({
     const dotSize = minSize + (payload.reviewCount / maxReviewCount) * sizeRange
 
     return (
-      <g key={`dot-${payload.week}`}>
+      <g key={`dot-${payload.week}-${index}`} style={{ pointerEvents: 'all' }}>
         {/* Outer circle for mixed sentiment outline */}
         {outlineColor && (
           <circle
@@ -214,7 +214,7 @@ export function TimeSeriesChart({
           r={Math.max(18, dotSize + 6)}
           fill="transparent"
           stroke="transparent"
-          style={{ cursor: "pointer" }}
+          style={{ cursor: "pointer", pointerEvents: 'all' }}
           onClick={(e) => {
             e.stopPropagation()
             payload.weekData && onMarkerClick(payload.weekData)
@@ -357,6 +357,7 @@ export function TimeSeriesChart({
             stroke="#3b82f6"
             strokeWidth={2}
             dot={renderDot}
+            activeDot={false}
             connectNulls
             name={stockLabel}
           />
