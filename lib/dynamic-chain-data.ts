@@ -139,16 +139,22 @@ export async function buildChainCardData(
 
   // Stock metric: Stablecoin MCap
   const stockValue = chain.stablecoinMCap
-  if (stockValue === 0) {
-    console.warn(`${chain.name} has zero stablecoin MCap, skipping`)
-    return null
-  }
 
   // Flow metric: App Revenue (24h)
   const flowValue = chain.revenue24h
-  if (flowValue === 0) {
-    console.warn(`${chain.name} has zero revenue, skipping`)
+
+  // Skip only if BOTH metrics are zero (no data at all)
+  if (stockValue === 0 && flowValue === 0) {
+    console.warn(`${chain.name} has zero metrics for both stock and flow, skipping`)
     return null
+  }
+
+  // Log warning if only one metric is missing
+  if (stockValue === 0) {
+    console.warn(`${chain.name} has zero stablecoin MCap, showing only flow metric`)
+  }
+  if (flowValue === 0) {
+    console.warn(`${chain.name} has zero revenue, showing only stock metric`)
   }
 
   // Fetch Ethos score and reviews from Twitter (with override support)

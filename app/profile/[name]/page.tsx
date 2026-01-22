@@ -38,6 +38,8 @@ import {
 import { cachedFetch } from "@/lib/cache"
 import { CATEGORY_METRICS } from "@/types"
 import { PROTOCOLS } from "@/lib/protocol-config"
+import { getCorrectTwitterHandle } from "@/lib/twitter-overrides"
+import { getCorrectChainLogo } from "@/lib/chain-logo-overrides"
 
 export default function ProfilePage() {
   const params = useParams()
@@ -86,7 +88,7 @@ export default function ProfilePage() {
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
         // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'katana', 'ronin']
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
@@ -101,20 +103,15 @@ export default function ProfilePage() {
           'avalanche': 'Avalanche',
           'bsc': 'BSC',
           'fantom': 'Fantom',
+          'blast': 'Blast',
+          'katana': 'Ronin',
+          'ronin': 'Ronin',
         }
 
         // Get the properly formatted chain name for API calls
         const chainNameForApi = isChain
           ? (chainNameMapping[protocolName.toLowerCase()] || protocolName)
           : protocolName
-
-        // Twitter username resolution with hardcoded overrides for specific entities
-        const twitterOverrides: Record<string, string> = {
-          'base': 'base',
-          'eigencloud': 'eigencloud',
-          'lido': 'LidoFinance',
-          'binance-staked-eth': 'binance',
-        }
 
         // Fetch all data in parallel for maximum speed
         const [protocolDetails, metricsData] = await Promise.all([
@@ -167,21 +164,33 @@ export default function ProfilePage() {
         setFlowData(flowMetrics)
 
         // Extract logo from protocol details
-        if (protocolDetails?.logo) {
-          setLogoUrl(protocolDetails.logo)
-          console.log(`Logo URL: ${protocolDetails.logo}`)
+        // For chains, use the override system to ensure consistency with dashboard
+        let finalLogoUrl: string | null = null
+        if (isChain) {
+          // For chains, prioritize our logo override system
+          finalLogoUrl = getCorrectChainLogo(chainNameForApi, protocolDetails?.logo || null)
+          console.log(`Using chain logo override for ${chainNameForApi}: ${finalLogoUrl}`)
+        } else {
+          // For protocols, use DeFiLlama's logo
+          finalLogoUrl = protocolDetails?.logo || null
+          console.log(`Using protocol logo from DeFiLlama: ${finalLogoUrl}`)
+        }
+
+        if (finalLogoUrl) {
+          setLogoUrl(finalLogoUrl)
         }
 
         // Chart data is ready - show the page!
         setLoading(false)
 
         // Determine which Twitter username to use:
-        // 1. First priority: Hardcoded overrides
+        // 1. First priority: Centralized Twitter overrides
         // 2. Second: Twitter from DeFiLlama API
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
-        const twitterUsername = twitterOverrides[protocolName.toLowerCase()] ||
-                                protocolDetails?.twitter ||
-                                protocolConfig?.ethos.twitterUsername
+        const twitterUsername = getCorrectTwitterHandle(
+          protocolName.toLowerCase(),
+          protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
+        )
 
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
@@ -366,7 +375,7 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'katana', 'ronin']
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"

@@ -10,6 +10,22 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "eigencloud": "eigencloud",
   "eigenlayer": "eigencloud",
   "morpho": "morpho",
+
+  // Chain overrides
+  "ethereum": "ethereum",
+  "fantom": "FantomFDN",
+  "polygon": "0xPolygon",
+  "blast": "Blast_L2",
+  "katana": "Ronin_Network",
+  "ronin": "Ronin_Network",
+  "base": "base",
+  "solana": "solana",
+  "tron": "tronfoundation",
+  "arbitrum": "arbitrum",
+  "optimism": "Optimism",
+  "avalanche": "avax",
+  "bsc": "BNBCHAIN",
+  "binance": "BNBCHAIN",
 }
 
 /**
