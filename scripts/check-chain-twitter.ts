@@ -26,9 +26,9 @@ async function checkChainTwitterData() {
     console.log(`✓ Chains WITH Twitter handle: ${withTwitter.length}`)
     console.log(`✗ Chains WITHOUT Twitter handle: ${withoutTwitter.length}\n`)
 
-    console.log('='*80)
+    console.log('='.repeat(80))
     console.log('CHAINS WITH TWITTER HANDLES (sorted by TVL):')
-    console.log('='*80)
+    console.log('='.repeat(80))
 
     withTwitter
       .sort((a, b) => b.tvl - a.tvl)
@@ -36,9 +36,9 @@ async function checkChainTwitterData() {
         console.log(`${(index + 1).toString().padStart(3)}. ${chain.name.padEnd(30)} | @${chain.twitter.padEnd(20)} | TVL: $${(chain.tvl / 1e9).toFixed(2)}B`)
       })
 
-    console.log('\n' + '='*80)
+    console.log('\n' + '='.repeat(80))
     console.log('CHAINS WITHOUT TWITTER HANDLES (sorted by TVL):')
-    console.log('='*80)
+    console.log('='.repeat(80))
 
     withoutTwitter
       .sort((a, b) => b.tvl - a.tvl)
@@ -47,9 +47,9 @@ async function checkChainTwitterData() {
         console.log(`${(index + 1).toString().padStart(3)}. ${chain.name.padEnd(30)} | TVL: $${(chain.tvl / 1e9).toFixed(2)}B`)
       })
 
-    console.log('\n' + '='*80)
+    console.log('\n' + '='.repeat(80))
     console.log('SUMMARY')
-    console.log('='*80)
+    console.log('='.repeat(80))
     console.log(`Coverage: ${((withTwitter.length / chains.length) * 100).toFixed(1)}% of chains have Twitter handles`)
 
     // Check top chains by TVL
