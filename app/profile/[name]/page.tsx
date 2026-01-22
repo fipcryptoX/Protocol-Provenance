@@ -176,22 +176,24 @@ export default function ProfilePage() {
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
         if (twitterUsername) {
-          console.log(`Fetching reviews for @${twitterUsername} in background...`)
-          cachedFetch(
-            `all-reviews-twitter-${twitterUsername}`,
-            () => getAllReviewsByTwitter(twitterUsername, 1000),
-            300000 // 5 min cache
-          )
-            .then((reviewsData) => {
+          console.log(`🔄 Starting background fetch of reviews for @${twitterUsername}...`)
+
+          // Use IIFE to ensure promise executes
+          ;(async () => {
+            try {
+              const reviewsData = await cachedFetch(
+                `all-reviews-twitter-${twitterUsername}`,
+                () => getAllReviewsByTwitter(twitterUsername, 1000),
+                300000 // 5 min cache
+              )
+              console.log(`✅ Reviews loaded: ${reviewsData.length} reviews`)
               setReviews(reviewsData)
-              console.log(`✓ Loaded ${reviewsData.length} reviews in background`)
-            })
-            .catch((err) => {
-              console.error(`Failed to load reviews for @${twitterUsername}:`, err)
-              // Don't show error to user - chart is already visible
-            })
+            } catch (err) {
+              console.error(`❌ Failed to load reviews for @${twitterUsername}:`, err)
+            }
+          })()
         } else {
-          console.warn(`No Twitter username found for ${protocolName}, skipping reviews`)
+          console.warn(`⚠️ No Twitter username found for ${protocolName}, skipping reviews`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)
