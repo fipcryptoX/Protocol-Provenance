@@ -87,7 +87,7 @@ export default function ProfilePage() {
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
         // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'scroll', 'hyperliquid-l1']
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
@@ -102,6 +102,8 @@ export default function ProfilePage() {
           'avalanche': 'Avalanche',
           'bsc': 'BSC',
           'fantom': 'Fantom',
+          'scroll': 'Scroll',
+          'hyperliquid-l1': 'Hyperliquid L1',
         }
 
         // Get the properly formatted chain name for API calls
@@ -111,12 +113,14 @@ export default function ProfilePage() {
 
         // Fetch all data in parallel for maximum speed
         const [protocolDetails, metricsData] = await Promise.all([
-          // Fetch protocol details
-          cachedFetch(
-            `protocol-details-${defillamaSlug}`,
-            () => getProtocolDetails(defillamaSlug),
-            900000 // 15 min cache
-          ),
+          // Fetch protocol details (skip for chains as they don't have protocol data)
+          isChain
+            ? Promise.resolve(null)
+            : cachedFetch(
+                `protocol-details-${defillamaSlug}`,
+                () => getProtocolDetails(defillamaSlug),
+                900000 // 15 min cache
+              ),
           // Fetch metrics based on chain vs protocol
           isChain
             ? Promise.all([
@@ -358,7 +362,7 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'scroll', 'hyperliquid-l1']
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"

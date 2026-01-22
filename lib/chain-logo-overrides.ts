@@ -20,6 +20,8 @@ export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
   "optimism": "https://coin-images.coingecko.com/asset_platforms/images/1059/large/optimism.png",
   "avalanche": "https://coin-images.coingecko.com/asset_platforms/images/12/large/avalanche.png",
   "binance": "https://coin-images.coingecko.com/asset_platforms/images/1/large/binance-smart-chain.png",
+  "hyperliquid l1": "https://icons.llama.fi/hyperliquid-l1.png",
+  "scroll": "https://coin-images.coingecko.com/asset_platforms/images/145/large/scroll.png",
 }
 
 /**
