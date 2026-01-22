@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Loader } from "@/components/ui/loader"
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 import {
   TimeRange,
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const [flowData, setFlowData] = useState<HistoricalDataPoint[]>([])
   const [reviews, setReviews] = useState<EthosReview[]>([])
   const [loading, setLoading] = useState(true)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<WeeklyReviewData | null>(null)
   const [selectedWeekReviews, setSelectedWeekReviews] = useState<EthosReview[]>([])
@@ -177,6 +179,7 @@ export default function ProfilePage() {
         // This doesn't block chart rendering
         if (twitterUsername) {
           console.log(`🔄 Starting background fetch of reviews for @${twitterUsername}...`)
+          setReviewsLoading(true)
 
           // Use IIFE to ensure promise executes
           ;(async () => {
@@ -188,8 +191,10 @@ export default function ProfilePage() {
               )
               console.log(`✅ Reviews loaded: ${reviewsData.length} reviews`)
               setReviews(reviewsData)
+              setReviewsLoading(false)
             } catch (err) {
               console.error(`❌ Failed to load reviews for @${twitterUsername}:`, err)
+              setReviewsLoading(false)
             }
           })()
         } else {
@@ -453,23 +458,16 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Data Availability Info */}
-        <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-          {stockData.length === 0 && (
-            <p>Stock metric data is not available for this protocol.</p>
-          )}
-          {flowData.length === 0 && (
-            <p>Flow metric data is not available for this protocol.</p>
-          )}
-          {reviews.length === 0 && (
-            <p>No Ethos reviews found for this protocol.</p>
-          )}
-          {reviews.length > 0 && (
+        {/* Review Loading Status */}
+        <div className="text-sm text-slate-600 dark:text-slate-400">
+          {reviewsLoading ? (
+            <Loader variant="loading-dots" text="Loading reviews" size="sm" />
+          ) : reviews.length > 0 ? (
             <p>
               Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
               {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
             </p>
-          )}
+          ) : null}
         </div>
 
         {/* Review Modal */}
