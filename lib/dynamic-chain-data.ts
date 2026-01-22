@@ -63,8 +63,8 @@ export async function fetchFilteredChains(
 
   // Batch fetch Twitter handles and logos from CoinGecko
   const [twitterByGeckoId, logosByGeckoId] = await Promise.all([
-    geckoIds.length > 0 ? batchGetTwitterFromGeckoIds(geckoIds) : Promise.resolve({}),
-    geckoIds.length > 0 ? batchGetLogosFromGeckoIds(geckoIds) : Promise.resolve({})
+    geckoIds.length > 0 ? batchGetTwitterFromGeckoIds(geckoIds) : Promise.resolve<Record<string, string | null>>({}),
+    geckoIds.length > 0 ? batchGetLogosFromGeckoIds(geckoIds) : Promise.resolve<Record<string, string | null>>({})
   ])
 
   // Enrich chains with revenue, logo, and Twitter data
