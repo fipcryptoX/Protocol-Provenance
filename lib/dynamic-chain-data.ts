@@ -73,13 +73,17 @@ export async function fetchFilteredChains(
 
     // Determine logo with priority:
     // 1. CoinGecko (via gecko_id) - high-res, reliable
-    // 2. DeFiLlama icons CDN (auto-generated from chain name)
-    // 3. Manual overrides via getCorrectChainLogo
+    // 2. DefiLlama logo field from API response
+    // 3. DefiLlama icons CDN (auto-generated from chain name)
+    // 4. Manual overrides via getCorrectChainLogo
     let logoUrl: string | null = null
 
     if (chain.gecko_id && logosByGeckoId[chain.gecko_id]) {
       logoUrl = logosByGeckoId[chain.gecko_id]
       console.log(`Using CoinGecko logo for ${chain.name}: ${logoUrl}`)
+    } else if (chain.logo) {
+      logoUrl = chain.logo
+      console.log(`Using DefiLlama API logo for ${chain.name}: ${logoUrl}`)
     } else {
       // Generate DefiLlama CDN URL from chain name
       const normalizedName = chain.name.toLowerCase().replace(/\s+/g, '')

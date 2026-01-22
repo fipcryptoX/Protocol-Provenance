@@ -44,7 +44,7 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "stacks": "Stacks",
   "ton": "ton_blockchain",
   "icp": "dfinity",
-  "movement": "movementlabsxyz",
+  "movement": "movement_xyz",
 
   // Additional L2s and chains
   "scroll": "Scroll_ZKP",
