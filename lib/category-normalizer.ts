@@ -14,10 +14,7 @@ export type NormalizedCategory =
   | "DEX"
   | "Lending"
   | "Liquid Staking"
-  | "RWA"
   | "Stablecoin Apps"
-  | "Bridge"
-  | "Canonical Bridge"
   | "Restaking"
   | "Chain"
   | "CDP"
@@ -47,18 +44,10 @@ const CATEGORY_NORMALIZATION_MAP: Record<string, NormalizedCategory> = {
   // Liquid Restaking
   "Liquid Restaking": "Liquid Restaking",
 
-  // RWA
-  "RWA": "RWA",
-  "RWA Lending": "RWA",
-
   // Stablecoins
   "Stablecoin": "Stablecoin Apps",
   "Stablecoins": "Stablecoin Apps",
   "Stablecoin Apps": "Stablecoin Apps",
-
-  // Bridge
-  "Bridge": "Bridge",
-  "Canonical Bridge": "Canonical Bridge",
 
   // Restaking
   "Restaking": "Restaking",
@@ -166,50 +155,11 @@ export const CATEGORY_METRICS_MAP: Record<NormalizedCategory, CategoryMetrics> =
     }
   },
 
-  "RWA": {
-    stock: {
-      label: "TVL",
-      source: "protocols",
-      field: "tvl"
-    },
-    flow: {
-      label: "24h Revenue",
-      source: "revenue",
-      field: "total24h"
-    }
-  },
-
   "Stablecoin Apps": {
     stock: {
       label: "Stablecoin MCap",
       source: "stablecoins",
       field: "totalCirculatingUSD"
-    },
-    flow: {
-      label: "24h Revenue",
-      source: "revenue",
-      field: "total24h"
-    }
-  },
-
-  "Bridge": {
-    stock: {
-      label: "TVL",
-      source: "protocols",
-      field: "tvl"
-    },
-    flow: {
-      label: "24h Revenue",
-      source: "revenue",
-      field: "total24h"
-    }
-  },
-
-  "Canonical Bridge": {
-    stock: {
-      label: "TVL",
-      source: "protocols",
-      field: "tvl"
     },
     flow: {
       label: "24h Revenue",

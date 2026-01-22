@@ -1,10 +1,7 @@
 export type ProtocolCategory =
   | "Lending"
   | "Liquid Staking"
-  | "Bridge"
-  | "Canonical Bridge"
   | "Restaking"
-  | "RWA"
   | "DEX"
   | "Perps"
   | "Stablecoin Apps";
@@ -64,21 +61,9 @@ export const CATEGORY_METRICS: Record<ProtocolCategory, CategoryMetricConfig> = 
     stock: { label: "TVL", apiField: "tvl", unit: "USD" },
     flow: { label: "Protocol Revenue (30d)", apiField: "revenue", unit: "USD/30d" },
   },
-  "Bridge": {
-    stock: { label: "TVL", apiField: "tvl", unit: "USD" },
-    flow: { label: "Bridge Volume (30d)", apiField: "volume", unit: "USD/30d" },
-  },
-  "Canonical Bridge": {
-    stock: { label: "TVL", apiField: "tvl", unit: "USD" },
-    flow: { label: "Net Inflow (30d)", apiField: "volume", unit: "USD/30d" },
-  },
   "Restaking": {
     stock: { label: "Restaked TVL", apiField: "tvl", unit: "USD" },
     flow: { label: "AVS Revenue (30d)", apiField: "revenue", unit: "USD/30d" },
-  },
-  "RWA": {
-    stock: { label: "RWA TVL", apiField: "tvl", unit: "USD" },
-    flow: { label: "Revenue (30d)", apiField: "revenue", unit: "USD/30d" },
   },
   "DEX": {
     stock: { label: "TVL", apiField: "tvl", unit: "USD" },

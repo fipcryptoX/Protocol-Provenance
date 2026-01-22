@@ -28,8 +28,8 @@ export default async function Home() {
   // Filters chains with Stablecoin MCap >= $5M
   const chainCards = await buildAllChainCards(5_000_000)
 
-  // Combine all cards
-  const allCards = [...protocolCards, ...chainCards]
+  // Combine all cards and sort by Ethos score (highest first)
+  const allCards = [...protocolCards, ...chainCards].sort((a, b) => b.ethosScore - a.ethosScore)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
