@@ -241,26 +241,36 @@ export default function ProfilePage() {
         // This doesn't block chart rendering
         if (twitterUsername) {
           console.log(`🔄 Starting background fetch of reviews for @${twitterUsername}...`)
+          console.log(`   Protocol name: ${protocolName}`)
+          console.log(`   Twitter from override system: ${twitterUsername}`)
           setReviewsLoading(true)
 
           // Use IIFE to ensure promise executes
           ;(async () => {
             try {
+              console.log(`   Calling getAllReviewsByTwitter for @${twitterUsername}...`)
               const reviewsData = await cachedFetch(
                 `all-reviews-twitter-${twitterUsername}`,
                 () => getAllReviewsByTwitter(twitterUsername, 1000),
                 300000 // 5 min cache
               )
-              console.log(`✅ Reviews loaded: ${reviewsData.length} reviews`)
+              console.log(`✅ Reviews loaded: ${reviewsData.length} reviews for ${protocolName}`)
+              if (reviewsData.length > 0) {
+                console.log(`   First review:`, reviewsData[0])
+                console.log(`   Review date range: ${reviewsData[0].createdAt} to ${reviewsData[reviewsData.length - 1].createdAt}`)
+              }
               setReviews(reviewsData)
               setReviewsLoading(false)
             } catch (err) {
               console.error(`❌ Failed to load reviews for @${twitterUsername}:`, err)
+              console.error(`   Error details:`, err instanceof Error ? err.message : err)
               setReviewsLoading(false)
             }
           })()
         } else {
-          console.warn(`⚠️ No Twitter username found for ${protocolName}, skipping reviews`)
+          console.warn(`⚠️ No Twitter username found for ${protocolName}`)
+          console.warn(`   Protocol details twitter: ${protocolDetails?.twitter}`)
+          console.warn(`   Config twitter: ${protocolConfig?.ethos.twitterUsername}`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)
