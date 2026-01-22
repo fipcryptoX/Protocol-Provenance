@@ -16,7 +16,6 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "fantom": "FantomFDN",
   "polygon": "0xPolygon",
   "blast": "Blast_L2",
-  "katana": "Ronin_Network",
   "ronin": "Ronin_Network",
   "base": "base",
   "solana": "solana",

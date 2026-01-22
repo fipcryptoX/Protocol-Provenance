@@ -24,7 +24,6 @@ export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
   "fantom": "https://coin-images.coingecko.com/asset_platforms/images/250/large/fantom.png",
   "blast": "https://coin-images.coingecko.com/asset_platforms/images/305/large/blast.jpeg",
   "ronin": "https://coin-images.coingecko.com/asset_platforms/images/1388/large/ronin.png",
-  "katana": "https://coin-images.coingecko.com/asset_platforms/images/1388/large/ronin.png",
 }
 
 /**
