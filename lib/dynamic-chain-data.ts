@@ -157,7 +157,8 @@ function calculateReviewDistribution(reviews: EthosReview[]): ReviewDistribution
  * Build chain card data for a single chain
  */
 export async function buildChainCardData(
-  chain: EnrichedChain
+  chain: EnrichedChain,
+  skipEthos: boolean = false
 ): Promise<ProtocolCardData | null> {
   console.log(`Building card data for ${chain.name} chain...`)
   console.log(`  Stablecoin MCap: $${chain.stablecoinMCap.toLocaleString()}`)
@@ -183,12 +184,15 @@ export async function buildChainCardData(
     console.warn(`${chain.name} has zero revenue, showing only stock metric`)
   }
 
-  // Fetch Ethos score and reviews from Twitter (with override support)
-  let ethosScore = 0
-  let reviewDistribution: ReviewDistribution | undefined
+  // Get Twitter handle (with override support)
   const correctTwitterHandle = getCorrectTwitterHandle(chain.name, chain.twitter)
 
-  if (correctTwitterHandle) {
+  // Fetch Ethos score and reviews from Twitter (only if not skipped)
+  let ethosScore = 0
+  let reviewDistribution: ReviewDistribution | undefined
+  let tags: string[] | undefined
+
+  if (!skipEthos && correctTwitterHandle) {
     if (correctTwitterHandle !== chain.twitter) {
       console.log(`Using overridden Twitter handle for ${chain.name}: ${correctTwitterHandle} (was: ${chain.twitter})`)
     }
@@ -216,9 +220,14 @@ export async function buildChainCardData(
       console.warn(`Failed to fetch Ethos data for ${chain.name}:`, error)
       reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
     }
-  } else {
+  } else if (!correctTwitterHandle) {
     console.warn(`No Twitter handle for ${chain.name}`)
     reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
+  }
+
+  // Include Twitter handle in tags for client-side Ethos loading
+  if (correctTwitterHandle) {
+    tags = [`@${correctTwitterHandle}`]
   }
 
   // Return normalized card data
@@ -227,7 +236,7 @@ export async function buildChainCardData(
     avatarUrl: chain.logo || undefined,
     ethosScore,
     category: "chain",
-    tags: undefined,
+    tags, // Include Twitter handle for client-side Ethos loading
     stockMetric: {
       label: "Stablecoin MCAP",
       valueUsd: stockValue
@@ -244,16 +253,20 @@ export async function buildChainCardData(
  * Build all chain cards
  */
 export async function buildAllChainCards(
-  minMCap: number = 5_000_000
+  minMCap: number = 5_000_000,
+  skipEthos: boolean = true
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic chain card generation...")
+  if (skipEthos) {
+    console.log("Skipping Ethos data during build (will be loaded client-side)")
+  }
 
   // Step 1: Fetch and filter chains
   const chains = await fetchFilteredChains(minMCap)
 
   // Step 2: Build card data for each chain
   const cardDataPromises = chains.map(chain =>
-    buildChainCardData(chain)
+    buildChainCardData(chain, skipEthos)
   )
 
   const cardDataResults = await Promise.all(cardDataPromises)

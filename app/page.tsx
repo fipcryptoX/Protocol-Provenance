@@ -12,11 +12,11 @@
  * No rankings, comparisons, charts, time ranges, or user inputs.
  */
 
-import { AssetCard } from "@/components/ui/asset-card"
 import { buildAllProtocolCards } from "@/lib/dynamic-protocol-data"
 import { buildAllChainCards } from "@/lib/dynamic-chain-data"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { InfiniteScrollCards } from "@/components/infinite-scroll-cards"
 import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
@@ -26,7 +26,8 @@ export default async function Home() {
 
   // Dynamically build all chain cards from DefiLlama
   // Filters chains with Stablecoin MCap >= $5M
-  const chainCards = await buildAllChainCards(5_000_000)
+  // Skip Ethos during build - will be loaded client-side with infinite scroll
+  const chainCards = await buildAllChainCards(5_000_000, true)
 
   // Combine all cards
   const allCards = [...protocolCards, ...chainCards]
@@ -51,23 +52,9 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Protocol and Chain Cards */}
+          {/* Protocol and Chain Cards with Infinite Scroll */}
           {allCards.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allCards.map((card) => (
-                <AssetCard
-                  key={card.name}
-                  name={card.name}
-                  avatarUrl={card.avatarUrl}
-                  ethosScore={card.ethosScore}
-                  category={card.category}
-                  tags={card.tags}
-                  stockMetric={card.stockMetric}
-                  flowMetric={card.flowMetric}
-                  reviewDistribution={card.reviewDistribution}
-                />
-              ))}
-            </div>
+            <InfiniteScrollCards initialCards={allCards} cardsPerPage={15} />
           ) : (
             <Alert>
               <AlertCircle className="h-4 w-4" />
