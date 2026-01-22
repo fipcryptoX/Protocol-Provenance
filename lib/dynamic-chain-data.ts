@@ -40,6 +40,11 @@ export async function fetchFilteredChains(
 ): Promise<EnrichedChain[]> {
   console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000}M...`)
 
+  // Chains to exclude from the dashboard
+  const excludedChains = new Set([
+    'fantom',
+  ])
+
   // Fetch all chains
   const allChains = await fetchAllChains()
 
@@ -48,6 +53,7 @@ export async function fetchFilteredChains(
 
   // Filter by Stablecoin MCap
   const filtered = filterChainsByStablecoinMCap(allChains, stableMCapByChain, minMCap)
+    .filter(chain => !excludedChains.has(chain.name.toLowerCase()))
   console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000}M`)
 
   // Fetch chain revenue data for filtered chains

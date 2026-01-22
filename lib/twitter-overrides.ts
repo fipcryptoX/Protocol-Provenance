@@ -13,6 +13,7 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "lido": "LidoFinance",
   "binance-staked-eth": "binance",
   "uniswap": "Uniswap",
+  "raydium": "raydium",
 
   // Chain overrides - Layer 1s
   "ethereum": "ethereum",

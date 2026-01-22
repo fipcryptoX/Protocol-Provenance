@@ -64,6 +64,9 @@ export async function fetchFilteredProtocols(
     'jupiter perp exchange',
     'uniswap v2',
     'polygon staking and bridging',
+    'spark savings',
+    'polygon bridge & staking',
+    'jupiter perpetual',
   ])
 
   // Normalize and enrich
