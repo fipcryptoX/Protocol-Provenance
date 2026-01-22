@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { AssetCard } from "@/components/ui/asset-card"
 import { ProtocolCardData, ReviewDistribution } from "@/lib/protocol-data"
-import { getUserScoreFromTwitter, getReviewsByTwitter } from "@/lib/api/ethos"
+import { getUserScoreFromTwitter, getReviewsByTwitter } from "@/lib/api/ethos-client"
 
 interface CardWithEthos extends ProtocolCardData {
   ethosLoading?: boolean
