@@ -20,7 +20,6 @@ import { getUserScoreFromTwitter, getReviewsByTwitter, EthosReview } from "./api
 import { ProtocolCardData, ReviewDistribution } from "./protocol-data"
 import { getCorrectTwitterHandle } from "./twitter-overrides"
 import { getCorrectChainLogo } from "./chain-logo-overrides"
-import { batchGetTwitterFromGeckoIds } from "./api/coingecko"
 
 /**
  * Enriched chain with metrics
@@ -54,49 +53,21 @@ export async function fetchFilteredChains(
   // Fetch chain revenue data for filtered chains
   const revenueByChain = await fetchChainRevenue(filtered)
 
-  // Collect gecko_ids for CoinGecko Twitter lookup
-  const geckoIds = filtered
-    .filter(chain => chain.gecko_id)
-    .map(chain => chain.gecko_id as string)
-
-  console.log(`Found ${geckoIds.length} chains with gecko_id for CoinGecko lookup`)
-
-  // Batch fetch Twitter handles from CoinGecko
-  const twitterByGeckoId = geckoIds.length > 0
-    ? await batchGetTwitterFromGeckoIds(geckoIds)
-    : {}
-
-  // Enrich chains with revenue, logo, and Twitter data
+  // Enrich chains with revenue and apply logo overrides
   const enriched: EnrichedChain[] = filtered.map(chain => {
     const revenue24h = revenueByChain[chain.name] || 0
     const correctLogo = getCorrectChainLogo(chain.name, chain.logo || null)
-
-    // Determine Twitter handle with priority:
-    // 1. CoinGecko (via gecko_id) - most reliable
-    // 2. DeFiLlama's twitter field - fallback
-    let twitterHandle: string | null = null
-
-    if (chain.gecko_id && twitterByGeckoId[chain.gecko_id]) {
-      twitterHandle = twitterByGeckoId[chain.gecko_id]
-      console.log(`Using CoinGecko Twitter for ${chain.name}: @${twitterHandle}`)
-    } else if (chain.twitter) {
-      twitterHandle = chain.twitter
-      console.log(`Using DeFiLlama Twitter for ${chain.name}: @${twitterHandle}`)
-    } else {
-      console.log(`No Twitter handle found for ${chain.name} (gecko_id: ${chain.gecko_id || 'none'})`)
-    }
 
     return {
       name: chain.name,
       stablecoinMCap: chain.stablecoinMCap,
       logo: correctLogo,
-      twitter: twitterHandle,
+      twitter: chain.twitter || null,
       revenue24h
     }
   })
 
-  const chainsWithTwitter = enriched.filter(c => c.twitter).length
-  console.log(`Enriched ${enriched.length} chains with revenue data (${chainsWithTwitter} have Twitter handles)`)
+  console.log(`Enriched ${enriched.length} chains with revenue data`)
   return enriched
 }
 
