@@ -421,9 +421,18 @@ export default function ProfilePage() {
           <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 capitalize">
             {protocolName.replace(/-/g, " ")}
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">
-            Historical metrics and community reviews
-          </p>
+          <div className="mt-2 text-slate-600 dark:text-slate-400">
+            {reviewsLoading ? (
+              <Loader variant="loading-dots" text="Loading reviews" size="sm" />
+            ) : reviews.length > 0 ? (
+              <p>
+                Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
+                {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
+              </p>
+            ) : (
+              <p>Historical metrics and community reviews</p>
+            )}
+          </div>
         </div>
 
         {/* Chart Card */}
@@ -457,18 +466,6 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Review Loading Status */}
-        <div className="text-sm text-slate-600 dark:text-slate-400">
-          {reviewsLoading ? (
-            <Loader variant="loading-dots" text="Loading reviews" size="sm" />
-          ) : reviews.length > 0 ? (
-            <p>
-              Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
-              {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
-            </p>
-          ) : null}
-        </div>
 
         {/* Review Modal */}
         <ReviewModal
