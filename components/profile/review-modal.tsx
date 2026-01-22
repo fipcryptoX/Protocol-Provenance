@@ -36,26 +36,67 @@ export function ReviewModal({
   const metricSnapshot = useMemo(() => {
     if (!weekData) return null
 
-    // Find the closest data point to the week start
-    // First try to find an exact match within the week
-    let dataPoint = chartData.find(
+    console.log(`[ReviewModal] Finding metric snapshot for week:`, {
+      weekStart: new Date(weekData.weekStart * 1000).toISOString(),
+      weekEnd: new Date(weekData.weekEnd * 1000).toISOString(),
+    })
+
+    // Find ALL data points within the week
+    const pointsInWeek = chartData.filter(
       (point) =>
         point.timestamp >= weekData.weekStart &&
         point.timestamp <= weekData.weekEnd
     )
 
+    console.log(`[ReviewModal] Found ${pointsInWeek.length} data points in week`)
+
+    if (pointsInWeek.length > 0) {
+      console.log(`[ReviewModal] Sample points in week:`, pointsInWeek.slice(0, 3).map(p => ({
+        timestamp: new Date(p.timestamp * 1000).toISOString(),
+        stock: p.stock,
+        flow: p.flow
+      })))
+
+      // Prefer points with flow data, then take the most recent
+      const pointsWithFlow = pointsInWeek.filter(p => p.flow !== null && p.flow > 0)
+
+      if (pointsWithFlow.length > 0) {
+        console.log(`[ReviewModal] ${pointsWithFlow.length} points have flow data`)
+        // Take the most recent point with flow data
+        const dataPoint = pointsWithFlow[pointsWithFlow.length - 1]
+        console.log(`[ReviewModal] Selected point:`, {
+          timestamp: new Date(dataPoint.timestamp * 1000).toISOString(),
+          stock: dataPoint.stock,
+          flow: dataPoint.flow
+        })
+        return dataPoint
+      }
+
+      // Otherwise take the most recent point
+      console.log(`[ReviewModal] No points with flow data, using most recent`)
+      return pointsInWeek[pointsInWeek.length - 1]
+    }
+
     // If no exact match, find the closest point before or during the week
-    if (!dataPoint && chartData.length > 0) {
+    console.log(`[ReviewModal] No points in week range, finding closest point`)
+    if (chartData.length > 0) {
       // Sort by closest timestamp to week start
       const sortedByDistance = [...chartData].sort((a, b) => {
         const distA = Math.abs(a.timestamp - weekData.weekStart)
         const distB = Math.abs(b.timestamp - weekData.weekStart)
         return distA - distB
       })
-      dataPoint = sortedByDistance[0]
+      const dataPoint = sortedByDistance[0]
+      console.log(`[ReviewModal] Closest point:`, {
+        timestamp: new Date(dataPoint.timestamp * 1000).toISOString(),
+        stock: dataPoint.stock,
+        flow: dataPoint.flow
+      })
+      return dataPoint
     }
 
-    return dataPoint
+    console.log(`[ReviewModal] No data points found at all`)
+    return null
   }, [weekData, chartData])
 
   // Sentiment filter state
@@ -128,15 +169,15 @@ export function ReviewModal({
               year: "numeric",
             })}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="mt-2">
             {weekData.reviewCount} {weekData.reviewCount === 1 ? "review" : "reviews"}{" "}
             during this period
           </DialogDescription>
         </DialogHeader>
 
         {/* Metric Snapshot with Animated Cards */}
-        {metricSnapshot && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {metricSnapshot && (metricSnapshot.stock !== null || metricSnapshot.flow !== null) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 mt-6">
             {metricSnapshot.stock !== null && (
               <MetricStatCard
                 title={stockLabel}
@@ -156,14 +197,14 @@ export function ReviewModal({
 
         {/* Sentiment Filter */}
         <div className="mb-6">
-          <p className="text-sm font-medium text-slate-700 mb-3">Filter by sentiment</p>
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Filter by sentiment</p>
+          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
             <button
               onClick={() => setSentimentFilter("ALL")}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                 sentimentFilter === "ALL"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
               }`}
             >
               All ({weekData.reviewCount})
@@ -173,8 +214,8 @@ export function ReviewModal({
                 onClick={() => setSentimentFilter("POSITIVE")}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   sentimentFilter === "POSITIVE"
-                    ? "bg-white text-green-700 shadow-sm"
-                    : "text-slate-600 hover:text-green-700"
+                    ? "bg-white dark:bg-slate-700 text-green-700 dark:text-green-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-green-700 dark:hover:text-green-400"
                 }`}
               >
                 Positive ({weekData.sentiment.positive})
@@ -185,8 +226,8 @@ export function ReviewModal({
                 onClick={() => setSentimentFilter("NEUTRAL")}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   sentimentFilter === "NEUTRAL"
-                    ? "bg-white text-yellow-700 shadow-sm"
-                    : "text-slate-600 hover:text-yellow-700"
+                    ? "bg-white dark:bg-slate-700 text-yellow-700 dark:text-yellow-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-yellow-700 dark:hover:text-yellow-400"
                 }`}
               >
                 Neutral ({weekData.sentiment.neutral})
@@ -197,8 +238,8 @@ export function ReviewModal({
                 onClick={() => setSentimentFilter("NEGATIVE")}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   sentimentFilter === "NEGATIVE"
-                    ? "bg-white text-red-700 shadow-sm"
-                    : "text-slate-600 hover:text-red-700"
+                    ? "bg-white dark:bg-slate-700 text-red-700 dark:text-red-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-red-700 dark:hover:text-red-400"
                 }`}
               >
                 Negative ({weekData.sentiment.negative})
@@ -229,10 +270,10 @@ export function ReviewModal({
                       </Avatar>
 
                       <div>
-                        <cite className="text-sm font-medium not-italic text-slate-900">
+                        <cite className="text-sm font-medium not-italic text-slate-900 dark:text-slate-100">
                           {review.author.displayName || review.author.username || "Anonymous"}
                         </cite>
-                        <span className="block text-sm text-slate-600">
+                        <span className="block text-sm text-slate-600 dark:text-slate-400">
                           {review.author.score} | {formatDate(review.createdAt)}
                         </span>
                       </div>
@@ -243,7 +284,7 @@ export function ReviewModal({
                   </div>
 
                   {/* Review Content */}
-                  <p className="text-slate-700 leading-relaxed">{review.content}</p>
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{review.content}</p>
                 </blockquote>
               </CardContent>
             </Card>

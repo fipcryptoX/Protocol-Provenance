@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { CategoryBadge, ProtocolTag } from "@/components/ui/protocol-tag"
 import { cn } from "@/lib/utils"
 import { getEthosRank, getEthosColor } from "@/lib/ethos-ranking"
+import { TrendingUp, Activity } from "lucide-react"
 
 export interface ReviewDistribution {
   negative: number
@@ -46,10 +47,6 @@ export function AssetCard({
   const router = useRouter()
   const ethosRank = getEthosRank(ethosScore)
   const ethosColor = getEthosColor(ethosScore)
-
-  // Stock and Flow metric icons from PRD
-  const STOCK_ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoYXJ0LWNhbmRsZXN0aWNrLWljb24gbHVjaWRlLWNoYXJ0LWNhbmRsZXN0aWNrIj48cGF0aCBkPSJNOSA1djQiLz48cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI2IiB4PSI3IiB5PSI5IiByeD0iMSIvPjxwYXRoIGQ9Ik05IDE1djIiLz48cGF0aCBkPSJNMTcgM3YyIi8+PHJlY3Qgd2lkdGg9IjQiIGhlaWdodD0iOCIgeD0iMTUiIHk9IjUiIHJ4PSIxIi8+PHBhdGggZD0iTTE3IDEzdjMiLz48cGF0aCBkPSJNMyAzdjE2YTIgMiAwIDAgMCAyIDJoMTYiLz48L3N2Zz4="
-  const FLOW_ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWFjdGl2aXR5LWljb24gbHVjaWRlLWFjdGl2aXR5Ij48cGF0aCBkPSJNMjIgMTJoLTIuNDhhMiAyIDAgMCAwLTEuOTMgMS40NmwtMi4zNSA4LjM2YS4yNS4yNSAwIDAgMS0uNDggMEw5LjI0IDIuMThhLjI1LjI1IDAgMCAwLS40OCAwbC0yLjM1IDguMzZBMiAyIDAgMCAxIDQuNDkgMTJIMiIvPjwvc3ZnPg=="
 
   const formatValue = (value: number): string => {
     if (value >= 1_000_000_000) {
@@ -128,7 +125,7 @@ export function AssetCard({
           {/* Stock Metric */}
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 flex-shrink-0 flex items-center justify-center">
-              <img src={STOCK_ICON} alt="Stock metric" className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-muted-foreground">{stockMetric.label}</div>
@@ -141,7 +138,7 @@ export function AssetCard({
           {/* Flow Metric */}
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 flex-shrink-0 flex items-center justify-center">
-              <img src={FLOW_ICON} alt="Flow metric" className="h-5 w-5 opacity-70" />
+              <Activity className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <div className="text-xs text-muted-foreground">{flowMetric.label}</div>

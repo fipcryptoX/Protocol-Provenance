@@ -9,6 +9,7 @@ import { ReviewModal } from "@/components/profile/review-modal"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 import {
   TimeRange,
@@ -150,6 +151,13 @@ export default function ProfilePage() {
 
         // Set metrics data
         const [stockMetrics, flowMetrics] = metricsData
+        console.log(`Stock data points: ${stockMetrics.length}, Flow data points: ${flowMetrics.length}`)
+        if (stockMetrics.length > 0) {
+          console.log(`Sample stock data:`, stockMetrics.slice(0, 3))
+        }
+        if (flowMetrics.length > 0) {
+          console.log(`Sample flow data:`, flowMetrics.slice(0, 3))
+        }
         setStockData(stockMetrics)
         setFlowData(flowMetrics)
 
@@ -248,7 +256,16 @@ export default function ProfilePage() {
     })
 
     // Sort by timestamp
-    return Array.from(dataMap.values()).sort((a, b) => a.timestamp - b.timestamp)
+    const result = Array.from(dataMap.values()).sort((a, b) => a.timestamp - b.timestamp)
+
+    // Debug: Log how many points have flow data
+    const pointsWithFlow = result.filter(p => p.flow !== null).length
+    console.log(`Chart data: ${result.length} total points, ${pointsWithFlow} with flow data`)
+    if (pointsWithFlow > 0) {
+      console.log(`Sample points with flow:`, result.filter(p => p.flow !== null).slice(0, 3))
+    }
+
+    return result
   }, [stockData, flowData, selectedRange])
 
   // Aggregate reviews by week
@@ -332,10 +349,10 @@ export default function ProfilePage() {
   // Handle loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-600">Loading profile data...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading profile data...</p>
         </div>
       </div>
     )
@@ -344,7 +361,7 @@ export default function ProfilePage() {
   // Handle error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-8">
         <div className="max-w-4xl mx-auto">
           <Link href="/">
             <Button variant="outline" className="mb-6">
@@ -362,7 +379,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -372,18 +389,21 @@ export default function ProfilePage() {
               Back to Dashboard
             </Button>
           </Link>
-          <TimeRangeSelector
-            selectedRange={selectedRange}
-            onRangeChange={setSelectedRange}
-          />
+          <div className="flex items-center gap-4">
+            <TimeRangeSelector
+              selectedRange={selectedRange}
+              onRangeChange={setSelectedRange}
+            />
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Protocol Title */}
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 capitalize">
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 capitalize">
             {protocolName.replace(/-/g, " ")}
           </h1>
-          <p className="text-slate-600 mt-2">
+          <p className="text-slate-600 dark:text-slate-400 mt-2">
             Historical metrics and community reviews
           </p>
         </div>
@@ -404,7 +424,7 @@ export default function ProfilePage() {
                 onMarkerHover={() => {}}
               />
             ) : (
-              <div className="text-center py-12 text-slate-600">
+              <div className="text-center py-12 text-slate-600 dark:text-slate-400">
                 No historical data available for this protocol.
               </div>
             )}
@@ -412,7 +432,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Data Availability Info */}
-        <div className="text-sm text-slate-600 space-y-1">
+        <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
           {stockData.length === 0 && (
             <p>Stock metric data is not available for this protocol.</p>
           )}

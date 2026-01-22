@@ -53,7 +53,8 @@ export function TimeSeriesChart({
     const weekMap = new Map<number, WeeklyDataPoint>()
 
     // First pass: aggregate stock and flow data by week
-    // For flow (revenue), sum up the daily values to get weekly total
+    // For both stock and flow metrics, use the latest value in the week
+    // (Flow data from DefiLlama already represents 7-day rolling values)
     data.forEach((point) => {
       const weekStart = Math.floor(point.timestamp / WEEK_IN_SECONDS) * WEEK_IN_SECONDS
 
@@ -63,16 +64,16 @@ export function TimeSeriesChart({
           week: weekDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           weekTimestamp: weekStart,
           stockValue: point.stock,
-          flowValue: point.flow || 0,
+          flowValue: point.flow || null,
           reviewCount: 0,
           dominantSentiment: "NEUTRAL",
           sentiment: { positive: 0, neutral: 0, negative: 0 },
         })
       } else {
-        // For stock metrics, use latest value; for flow metrics, sum up the week
+        // For both stock and flow metrics, use the latest (most recent) value
         const weekPoint = weekMap.get(weekStart)!
         if (point.stock !== null) weekPoint.stockValue = point.stock
-        if (point.flow !== null) weekPoint.flowValue = (weekPoint.flowValue || 0) + point.flow
+        if (point.flow !== null) weekPoint.flowValue = point.flow
       }
     })
 
@@ -198,7 +199,7 @@ export function TimeSeriesChart({
           x={cx}
           y={cy + dotSize + 12}
           textAnchor="middle"
-          fill="#64748b"
+          className="fill-slate-600 dark:fill-slate-400"
           fontSize="10"
           fontWeight="600"
           pointerEvents="none"
@@ -239,13 +240,13 @@ export function TimeSeriesChart({
           data={weeklyData}
           margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
 
           <XAxis
             dataKey="week"
-            stroke="#64748b"
+            className="stroke-slate-500 dark:stroke-slate-400"
             style={{ fontSize: "12px" }}
-            tick={{ fill: "#64748b" }}
+            tick={{ className: "fill-slate-600 dark:fill-slate-400" }}
           />
 
           <YAxis
@@ -286,21 +287,21 @@ export function TimeSeriesChart({
               const payload = props.payload[0].payload as WeeklyDataPoint
 
               return (
-                <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-sm min-w-[280px]">
-                  <p className="font-semibold text-slate-900 mb-3">{payload.week}</p>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-4 text-sm min-w-[280px]">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100 mb-3">{payload.week}</p>
 
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-slate-600">{stockLabel}:</span>
-                      <span className="text-slate-900 font-semibold">
+                      <span className="text-slate-600 dark:text-slate-400">{stockLabel}:</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-semibold">
                         {payload.stockValue !== null ? formatCurrency(payload.stockValue) : "N/A"}
                       </span>
                     </div>
 
                     {payload.flowValue !== null && payload.flowValue > 0 && (
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-slate-600">{flowLabel}:</span>
-                        <span className="text-slate-900 font-semibold">
+                        <span className="text-slate-600 dark:text-slate-400">{flowLabel}:</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-semibold">
                           {formatCurrency(payload.flowValue)}
                         </span>
                       </div>
@@ -309,8 +310,8 @@ export function TimeSeriesChart({
                     {payload.reviewCount > 0 && (
                       <>
                         <div className="flex items-center justify-between gap-4 pt-1">
-                          <span className="text-slate-600">Reviews:</span>
-                          <span className="text-slate-900 font-semibold">
+                          <span className="text-slate-600 dark:text-slate-400">Reviews:</span>
+                          <span className="text-slate-900 dark:text-slate-100 font-semibold">
                             {payload.reviewCount}
                           </span>
                         </div>
@@ -318,25 +319,25 @@ export function TimeSeriesChart({
                         {/* Sentiment badges */}
                         <div className="flex gap-2 flex-wrap pt-1">
                           {payload.sentiment.positive > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-full">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-full">
                               <div className="w-2 h-2 rounded-full bg-green-500" />
-                              <span className="text-xs font-semibold text-green-700">
+                              <span className="text-xs font-semibold text-green-700 dark:text-green-400">
                                 {payload.sentiment.positive} Positive
                               </span>
                             </div>
                           )}
                           {payload.sentiment.negative > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-200 rounded-full">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-full">
                               <div className="w-2 h-2 rounded-full bg-red-500" />
-                              <span className="text-xs font-semibold text-red-700">
+                              <span className="text-xs font-semibold text-red-700 dark:text-red-400">
                                 {payload.sentiment.negative} Negative
                               </span>
                             </div>
                           )}
                           {payload.sentiment.neutral > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 border border-yellow-200 rounded-full">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-full">
                               <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                              <span className="text-xs font-semibold text-yellow-700">
+                              <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">
                                 {payload.sentiment.neutral} Neutral
                               </span>
                             </div>
