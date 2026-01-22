@@ -423,14 +423,14 @@ export default function ProfilePage() {
           </h1>
           <div className="mt-2 text-slate-600 dark:text-slate-400">
             {reviewsLoading ? (
-              <Loader variant="loading-dots" text="Loading reviews" size="sm" />
+              <Loader variant="loading-dots" text="Loading reviews" size="md" className="!text-slate-600 dark:!text-slate-400" />
             ) : reviews.length > 0 ? (
-              <p>
+              <p className="text-sm font-medium">
                 Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
                 {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
               </p>
             ) : (
-              <p>Historical metrics and community reviews</p>
+              <p className="text-sm font-medium">Historical metrics and community reviews</p>
             )}
           </div>
         </div>
