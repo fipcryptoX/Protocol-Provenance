@@ -34,6 +34,17 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "okexchain": "OKX",
   "metis": "MetisL2",
   "berachain": "berachain",
+  "linea": "LineaBuild",
+  "injective": "injective",
+  "sui": "SuiNetwork",
+  "stellar": "StellarOrg",
+  "tezos": "tezos",
+  "near": "nearprotocol",
+  "cardano": "Cardano",
+  "stacks": "Stacks",
+  "ton": "ton_blockchain",
+  "icp": "dfinity",
+  "movement": "movementlabsxyz",
 }
 
 /**
