@@ -44,7 +44,7 @@ export function getCorrectChainLogo(chainName: string, fallbackLogo: string | nu
   }
 
   // Auto-generate logo URL from DefiLlama CDN as fallback
-  // Format: https://icons.llamao.fi/icons/chains/rsz_[chainname].jpg
+  // Format: https://icons.llama.fi/icons/chains/rsz_[chainname].jpg
   const formattedName = chainName.toLowerCase().replace(/\s+/g, '')
-  return `https://icons.llamao.fi/icons/chains/rsz_${formattedName}.jpg`
+  return `https://icons.llama.fi/icons/chains/rsz_${formattedName}.jpg`
 }
