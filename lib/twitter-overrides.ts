@@ -72,10 +72,8 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "polygon zkevm": "0xPolygonZkEVM",
   "fraxtal": "fraxfinance",
   "boba": "bobanetwork",
-  "metis": "MetisL2",
   "zetachain": "zetablockchain",
   "core": "Coredao_Org",
-  "kava": "kava_platform",
 }
 
 /**
