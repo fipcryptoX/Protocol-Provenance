@@ -268,8 +268,8 @@ export async function buildProtocolCardData(
         console.warn(`Twitter user ${correctTwitterHandle} not found in Ethos for ${protocol.name}`)
       }
 
-      // Fetch reviews for distribution
-      const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 1000)
+      // Fetch reviews for distribution (limit to 100 for dashboard performance)
+      const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 100)
       if (reviewsData && reviewsData.reviews.length > 0) {
         reviewDistribution = calculateReviewDistribution(reviewsData.reviews)
         console.log(`Review distribution for ${protocol.name}:`, reviewDistribution)
