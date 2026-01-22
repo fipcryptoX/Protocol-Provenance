@@ -139,23 +139,39 @@ export async function getTwitterFromGeckoId(
 }
 
 /**
- * Batch fetch Twitter handles for multiple gecko_ids
+ * Batch fetch Twitter handles for multiple gecko_ids with rate limiting
  */
 export async function batchGetTwitterFromGeckoIds(
   geckoIds: string[]
 ): Promise<Record<string, string | null>> {
   console.log(`Fetching Twitter handles from CoinGecko for ${geckoIds.length} coins...`)
 
-  const results = await Promise.all(
-    geckoIds.map(async (geckoId) => {
-      const twitter = await getTwitterFromGeckoId(geckoId)
-      return { geckoId, twitter }
-    })
-  )
-
   const twitterByGeckoId: Record<string, string | null> = {}
-  for (const { geckoId, twitter } of results) {
-    twitterByGeckoId[geckoId] = twitter
+
+  // Process in batches of 5 with 3000ms delay to respect demo API rate limits
+  const BATCH_SIZE = 5
+  const DELAY_MS = 3000
+
+  for (let i = 0; i < geckoIds.length; i += BATCH_SIZE) {
+    const batch = geckoIds.slice(i, i + BATCH_SIZE)
+
+    console.log(`Fetching CoinGecko Twitter handles: batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(geckoIds.length / BATCH_SIZE)}...`)
+
+    const results = await Promise.all(
+      batch.map(async (geckoId) => {
+        const twitter = await getTwitterFromGeckoId(geckoId)
+        return { geckoId, twitter }
+      })
+    )
+
+    for (const { geckoId, twitter } of results) {
+      twitterByGeckoId[geckoId] = twitter
+    }
+
+    // Add delay between batches (except for the last batch)
+    if (i + BATCH_SIZE < geckoIds.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS))
+    }
   }
 
   const foundCount = Object.values(twitterByGeckoId).filter(t => t !== null).length
@@ -220,12 +236,15 @@ export async function batchGetLogosFromGeckoIds(
 
   const logosByGeckoId: Record<string, string | null> = {}
 
-  // Process in batches of 10 with 200ms delay between batches to avoid rate limits
-  const BATCH_SIZE = 10
-  const DELAY_MS = 200
+  // Process in batches of 5 with 3000ms delay to respect demo API rate limits
+  // Demo tier: ~10-30 calls/minute, so we target 20 calls/minute = 1 batch (5 calls) every 15 seconds
+  const BATCH_SIZE = 5
+  const DELAY_MS = 3000 // 3 seconds between batches
 
   for (let i = 0; i < geckoIds.length; i += BATCH_SIZE) {
     const batch = geckoIds.slice(i, i + BATCH_SIZE)
+
+    console.log(`Fetching CoinGecko logos: batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(geckoIds.length / BATCH_SIZE)}...`)
 
     const results = await Promise.all(
       batch.map(async (geckoId) => {

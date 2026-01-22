@@ -61,11 +61,14 @@ export async function fetchFilteredChains(
 
   console.log(`Found ${geckoIds.length} chains with gecko_id for CoinGecko lookup`)
 
-  // Batch fetch Twitter handles and logos from CoinGecko
-  const [twitterByGeckoId, logosByGeckoId] = await Promise.all([
-    geckoIds.length > 0 ? batchGetTwitterFromGeckoIds(geckoIds) : Promise.resolve<Record<string, string | null>>({}),
-    geckoIds.length > 0 ? batchGetLogosFromGeckoIds(geckoIds) : Promise.resolve<Record<string, string | null>>({})
-  ])
+  // Batch fetch Twitter handles and logos from CoinGecko sequentially to avoid rate limits
+  const twitterByGeckoId = geckoIds.length > 0
+    ? await batchGetTwitterFromGeckoIds(geckoIds)
+    : {}
+
+  const logosByGeckoId = geckoIds.length > 0
+    ? await batchGetLogosFromGeckoIds(geckoIds)
+    : {}
 
   // Enrich chains with revenue, logo, and Twitter data
   const enriched: EnrichedChain[] = filtered.map(chain => {
