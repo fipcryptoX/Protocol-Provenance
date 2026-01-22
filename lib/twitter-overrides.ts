@@ -26,7 +26,7 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "bsc": "BNBCHAIN",
   "binance": "BNBCHAIN",
   "sonic": "SonicLabs",
-  "monad": "monad_xyz",
+  "monad": "monad",
   "hyperliquid": "HyperliquidX",
   "hyperliquid l1": "HyperliquidX",
   "katana": "SkyMavisHQ",

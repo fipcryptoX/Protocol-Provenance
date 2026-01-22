@@ -222,7 +222,8 @@ async function fetchDexes(): Promise<DexProtocol[]> {
     })
 
     if (!response.ok) {
-      throw new Error(`DefiLlama dexes API error: ${response.status}`)
+      console.warn(`DefiLlama dexes API returned ${response.status}, continuing without DEX data`)
+      return []
     }
 
     const data = await response.json()
