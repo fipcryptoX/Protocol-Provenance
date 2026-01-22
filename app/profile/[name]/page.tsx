@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { TimeSeriesChart } from "@/components/profile/time-series-chart"
 import { TimeRangeSelector } from "@/components/profile/time-range-selector"
 import { ReviewModal } from "@/components/profile/review-modal"
@@ -52,6 +53,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<WeeklyReviewData | null>(null)
   const [selectedWeekReviews, setSelectedWeekReviews] = useState<EthosReview[]>([])
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   // Fetch data on mount
   useEffect(() => {
@@ -163,6 +165,12 @@ export default function ProfilePage() {
         }
         setStockData(stockMetrics)
         setFlowData(flowMetrics)
+
+        // Extract logo from protocol details
+        if (protocolDetails?.logo) {
+          setLogoUrl(protocolDetails.logo)
+          console.log(`Logo URL: ${protocolDetails.logo}`)
+        }
 
         // Chart data is ready - show the page!
         setLoading(false)
@@ -407,31 +415,36 @@ export default function ProfilePage() {
               Back to Dashboard
             </Button>
           </Link>
-          <div className="flex items-center gap-4">
-            <TimeRangeSelector
-              selectedRange={selectedRange}
-              onRangeChange={setSelectedRange}
-            />
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
 
         {/* Protocol Title */}
-        <div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 capitalize">
-            {protocolName.replace(/-/g, " ")}
-          </h1>
-          <div className="mt-2 text-slate-600 dark:text-slate-400">
-            {reviewsLoading ? (
-              <Loader variant="loading-dots" text="Loading reviews" size="md" className="!text-slate-600 dark:!text-slate-400" />
-            ) : reviews.length > 0 ? (
-              <p className="text-sm font-medium">
-                Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
-                {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
-              </p>
-            ) : (
-              <p className="text-sm font-medium">Historical metrics and community reviews</p>
-            )}
+        <div className="flex items-start gap-4">
+          {logoUrl && (
+            <Image
+              src={logoUrl}
+              alt={`${protocolName} logo`}
+              width={64}
+              height={64}
+              className="rounded-lg"
+            />
+          )}
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 capitalize">
+              {protocolName.replace(/-/g, " ")}
+            </h1>
+            <div className="mt-2 text-slate-600 dark:text-slate-400">
+              {reviewsLoading ? (
+                <Loader variant="loading-dots" text="Loading reviews" size="md" className="!text-slate-600 dark:!text-slate-400" />
+              ) : reviews.length > 0 ? (
+                <p className="text-sm font-medium">
+                  Showing {reviews.length} review{reviews.length !== 1 ? "s" : ""} across{" "}
+                  {weeklyReviewData.length} week{weeklyReviewData.length !== 1 ? "s" : ""}
+                </p>
+              ) : (
+                <p className="text-sm font-medium">Historical metrics and community reviews</p>
+              )}
+            </div>
           </div>
         </div>
 

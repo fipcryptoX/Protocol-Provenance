@@ -2,7 +2,7 @@
  * Dynamic Protocol Data System
  *
  * Automatically generates protocol cards from DefiLlama data:
- * 1. Fetches all protocols and filters by TVL >= $10B
+ * 1. Fetches all protocols and filters by TVL >= $1B
  * 2. Normalizes categories
  * 3. Fetches aggregated datasets (OI, volume, revenue, etc.)
  * 4. Matches protocols to their stock/flow metrics
@@ -42,7 +42,7 @@ export interface EnrichedProtocol {
  * Fetch and filter protocols by TVL
  */
 export async function fetchFilteredProtocols(
-  minTVL: number = 10_000_000_000
+  minTVL: number = 1_000_000_000
 ): Promise<EnrichedProtocol[]> {
   console.log(`Fetching protocols with TVL >= $${minTVL / 1_000_000_000}B...`)
 
@@ -229,11 +229,10 @@ export async function buildProtocolCardData(
     stockValue = protocol.tvl
   }
 
-  // Get flow metric value
+  // Get flow metric value (optional - protocols can display with just stock metrics)
   const flowValue = getFlowMetricValue(protocol, aggregatedData)
   if (flowValue === null || flowValue === 0) {
-    console.warn(`Failed to get flow metric for ${protocol.name}, skipping protocol`)
-    return null
+    console.warn(`No flow metric for ${protocol.name}, will display with stock metric only`)
   }
 
   // Fetch Ethos score and reviews from Twitter (with override support)
@@ -288,7 +287,7 @@ export async function buildProtocolCardData(
     },
     flowMetric: {
       label: metricsConfig.flow.label,
-      valueUsd: flowValue
+      valueUsd: flowValue || 0 // Use 0 if no flow data available
     },
     reviewDistribution
   }
@@ -298,7 +297,7 @@ export async function buildProtocolCardData(
  * Build all protocol cards
  */
 export async function buildAllProtocolCards(
-  minTVL: number = 10_000_000_000
+  minTVL: number = 1_000_000_000
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic protocol card generation...")
 

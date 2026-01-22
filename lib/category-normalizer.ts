@@ -20,6 +20,9 @@ export type NormalizedCategory =
   | "Canonical Bridge"
   | "Restaking"
   | "Chain"
+  | "CDP"
+  | "Yield"
+  | "Liquid Restaking"
 
 /**
  * Category normalization map
@@ -32,6 +35,7 @@ const CATEGORY_NORMALIZATION_MAP: Record<string, NormalizedCategory> = {
 
   // DEX
   "Dexes": "DEX",
+  "Dexs": "DEX", // API sometimes returns "Dexs" instead of "Dexes"
   "DEX": "DEX",
 
   // Lending
@@ -39,6 +43,9 @@ const CATEGORY_NORMALIZATION_MAP: Record<string, NormalizedCategory> = {
 
   // Liquid Staking
   "Liquid Staking": "Liquid Staking",
+
+  // Liquid Restaking
+  "Liquid Restaking": "Liquid Restaking",
 
   // RWA
   "RWA": "RWA",
@@ -55,6 +62,12 @@ const CATEGORY_NORMALIZATION_MAP: Record<string, NormalizedCategory> = {
 
   // Restaking
   "Restaking": "Restaking",
+
+  // CDP
+  "CDP": "CDP",
+
+  // Yield
+  "Yield": "Yield",
 
   // Chain
   "Chain": "Chain",
@@ -226,6 +239,45 @@ export const CATEGORY_METRICS_MAP: Record<NormalizedCategory, CategoryMetrics> =
     },
     flow: {
       label: "24h App Revenue",
+      source: "revenue",
+      field: "total24h"
+    }
+  },
+
+  "CDP": {
+    stock: {
+      label: "TVL",
+      source: "protocols",
+      field: "tvl"
+    },
+    flow: {
+      label: "24h Revenue",
+      source: "revenue",
+      field: "total24h"
+    }
+  },
+
+  "Yield": {
+    stock: {
+      label: "TVL",
+      source: "protocols",
+      field: "tvl"
+    },
+    flow: {
+      label: "24h Revenue",
+      source: "revenue",
+      field: "total24h"
+    }
+  },
+
+  "Liquid Restaking": {
+    stock: {
+      label: "TVL",
+      source: "protocols",
+      field: "tvl"
+    },
+    flow: {
+      label: "24h Revenue",
       source: "revenue",
       field: "total24h"
     }

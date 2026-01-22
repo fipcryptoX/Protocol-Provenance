@@ -2,8 +2,8 @@
  * Protocol Provenance Dashboard
  *
  * Dynamic Version:
- * - Automatically fetches all protocols with TVL >= $10B from DefiLlama
- * - Automatically fetches all chains with TVL >= $4B from DefiLlama
+ * - Automatically fetches all protocols with TVL >= $1B from DefiLlama
+ * - Automatically fetches all chains with Stablecoin MCap >= $5M from DefiLlama
  * - Normalizes categories and applies stock/flow pairing
  * - Fetches Ethos scores from Twitter
  * - Renders protocol and chain cards dynamically
@@ -21,12 +21,12 @@ import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
   // Dynamically build all protocol cards from DefiLlama
-  // Filters protocols with TVL >= $10B
-  const protocolCards = await buildAllProtocolCards(10_000_000_000)
+  // Filters protocols with TVL >= $1B
+  const protocolCards = await buildAllProtocolCards(1_000_000_000)
 
   // Dynamically build all chain cards from DefiLlama
-  // Filters chains with Stablecoin MCap >= $5B
-  const chainCards = await buildAllChainCards(5_000_000_000)
+  // Filters chains with Stablecoin MCap >= $5M
+  const chainCards = await buildAllChainCards(5_000_000)
 
   // Combine all cards
   const allCards = [...protocolCards, ...chainCards]

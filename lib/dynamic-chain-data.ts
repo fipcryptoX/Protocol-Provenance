@@ -3,7 +3,7 @@
  *
  * Automatically generates chain cards from DefiLlama data:
  * 1. Fetches all chains and stablecoin market caps
- * 2. Filters by Stablecoin MCap >= $5B
+ * 2. Filters by Stablecoin MCap >= $5M
  * 3. Fetches chain revenue data (app revenue 24h)
  * 4. Fetches Ethos scores from Twitter
  * 5. Returns normalized ProtocolCardData for rendering
@@ -36,9 +36,9 @@ export interface EnrichedChain {
  * Fetch and filter chains by Stablecoin MCap
  */
 export async function fetchFilteredChains(
-  minMCap: number = 5_000_000_000
+  minMCap: number = 5_000_000
 ): Promise<EnrichedChain[]> {
-  console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000_000}B...`)
+  console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000}M...`)
 
   // Fetch all chains
   const allChains = await fetchAllChains()
@@ -48,7 +48,7 @@ export async function fetchFilteredChains(
 
   // Filter by Stablecoin MCap
   const filtered = filterChainsByStablecoinMCap(allChains, stableMCapByChain, minMCap)
-  console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000_000}B`)
+  console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000}M`)
 
   // Fetch chain revenue data for filtered chains
   const revenueByChain = await fetchChainRevenue(filtered)
@@ -105,6 +105,8 @@ export async function buildChainCardData(
   chain: EnrichedChain
 ): Promise<ProtocolCardData | null> {
   console.log(`Building card data for ${chain.name} chain...`)
+  console.log(`  Stablecoin MCap: $${chain.stablecoinMCap.toLocaleString()}`)
+  console.log(`  Revenue 24h: $${chain.revenue24h.toLocaleString()}`)
 
   // Stock metric: Stablecoin MCap
   const stockValue = chain.stablecoinMCap
@@ -181,7 +183,7 @@ export async function buildChainCardData(
  * Build all chain cards
  */
 export async function buildAllChainCards(
-  minMCap: number = 5_000_000_000
+  minMCap: number = 5_000_000
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic chain card generation...")
 
