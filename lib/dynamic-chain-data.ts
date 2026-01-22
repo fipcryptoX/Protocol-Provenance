@@ -37,7 +37,8 @@ export interface EnrichedChain {
  * Fetch and filter chains by Stablecoin MCap
  */
 export async function fetchFilteredChains(
-  minMCap: number = 5_000_000
+  minMCap: number = 5_000_000,
+  skipCoinGecko: boolean = false
 ): Promise<EnrichedChain[]> {
   console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000}M...`)
 
@@ -54,21 +55,28 @@ export async function fetchFilteredChains(
   // Fetch chain revenue data for filtered chains
   const revenueByChain = await fetchChainRevenue(filtered)
 
-  // Collect gecko_ids for CoinGecko Twitter and logo lookup
-  const geckoIds = filtered
-    .filter(chain => chain.gecko_id)
-    .map(chain => chain.gecko_id as string)
+  // Batch fetch Twitter handles and logos from CoinGecko (skip during build to save time)
+  let twitterByGeckoId: Record<string, string | null> = {}
+  let logosByGeckoId: Record<string, string | null> = {}
 
-  console.log(`Found ${geckoIds.length} chains with gecko_id for CoinGecko lookup`)
+  if (!skipCoinGecko) {
+    const geckoIds = filtered
+      .filter(chain => chain.gecko_id)
+      .map(chain => chain.gecko_id as string)
 
-  // Batch fetch Twitter handles and logos from CoinGecko sequentially to avoid rate limits
-  const twitterByGeckoId = geckoIds.length > 0
-    ? await batchGetTwitterFromGeckoIds(geckoIds)
-    : {}
+    console.log(`Found ${geckoIds.length} chains with gecko_id for CoinGecko lookup`)
 
-  const logosByGeckoId = geckoIds.length > 0
-    ? await batchGetLogosFromGeckoIds(geckoIds)
-    : {}
+    // Batch fetch Twitter handles and logos from CoinGecko sequentially to avoid rate limits
+    twitterByGeckoId = geckoIds.length > 0
+      ? await batchGetTwitterFromGeckoIds(geckoIds)
+      : {}
+
+    logosByGeckoId = geckoIds.length > 0
+      ? await batchGetLogosFromGeckoIds(geckoIds)
+      : {}
+  } else {
+    console.log(`Skipping CoinGecko lookups during build`)
+  }
 
   // Enrich chains with revenue, logo, and Twitter data
   const enriched: EnrichedChain[] = filtered.map(chain => {
@@ -254,15 +262,19 @@ export async function buildChainCardData(
  */
 export async function buildAllChainCards(
   minMCap: number = 5_000_000,
-  skipEthos: boolean = true
+  skipEthos: boolean = true,
+  skipCoinGecko: boolean = true
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic chain card generation...")
   if (skipEthos) {
     console.log("Skipping Ethos data during build (will be loaded client-side)")
   }
+  if (skipCoinGecko) {
+    console.log("Skipping CoinGecko data during build (will use DefiLlama logos)")
+  }
 
   // Step 1: Fetch and filter chains
-  const chains = await fetchFilteredChains(minMCap)
+  const chains = await fetchFilteredChains(minMCap, skipCoinGecko)
 
   // Step 2: Build card data for each chain
   const cardDataPromises = chains.map(chain =>
