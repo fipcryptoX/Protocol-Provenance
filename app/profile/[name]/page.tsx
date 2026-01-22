@@ -38,6 +38,7 @@ import {
 import { cachedFetch } from "@/lib/cache"
 import { CATEGORY_METRICS } from "@/types"
 import { PROTOCOLS } from "@/lib/protocol-config"
+import { getCorrectTwitterHandle } from "@/lib/twitter-overrides"
 
 export default function ProfilePage() {
   const params = useParams()
@@ -108,14 +109,6 @@ export default function ProfilePage() {
           ? (chainNameMapping[protocolName.toLowerCase()] || protocolName)
           : protocolName
 
-        // Twitter username resolution with hardcoded overrides for specific entities
-        const twitterOverrides: Record<string, string> = {
-          'base': 'base',
-          'eigencloud': 'eigencloud',
-          'lido': 'LidoFinance',
-          'binance-staked-eth': 'binance',
-        }
-
         // Fetch all data in parallel for maximum speed
         const [protocolDetails, metricsData] = await Promise.all([
           // Fetch protocol details
@@ -176,12 +169,11 @@ export default function ProfilePage() {
         setLoading(false)
 
         // Determine which Twitter username to use:
-        // 1. First priority: Hardcoded overrides
-        // 2. Second: Twitter from DeFiLlama API
+        // 1. Use shared twitter-overrides function to check overrides by protocol name
+        // 2. If no override, use Twitter from DeFiLlama API
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
-        const twitterUsername = twitterOverrides[protocolName.toLowerCase()] ||
-                                protocolDetails?.twitter ||
-                                protocolConfig?.ethos.twitterUsername
+        const apiTwitterHandle = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
+        const twitterUsername = getCorrectTwitterHandle(protocolName, apiTwitterHandle)
 
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
@@ -370,7 +362,7 @@ export default function ProfilePage() {
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
-  const flowLabel = isChain ? "App Revenue (7d)" : "Revenue (7d)"
+  const flowLabel = isChain ? "24h App Revenue" : "Revenue (7d)"
 
   // Handle loading state
   if (loading) {

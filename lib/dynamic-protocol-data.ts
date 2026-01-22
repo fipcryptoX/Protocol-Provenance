@@ -58,10 +58,23 @@ export async function fetchFilteredProtocols(
     'eigencloud': 'EigenCloud',
   }
 
+  // Protocols to exclude from the dashboard
+  const excludedProtocols = new Set([
+    'jupiter staked sol',
+    'jupiter perp exchange',
+    'uniswap v2',
+  ])
+
   // Normalize and enrich
   const enriched: EnrichedProtocol[] = []
 
   for (const protocol of filtered) {
+    // Check if protocol should be excluded
+    if (excludedProtocols.has(protocol.name.toLowerCase())) {
+      console.log(`Skipping ${protocol.name} - explicitly excluded`)
+      continue
+    }
+
     // Normalize category
     const normalizedCategory = normalizeCategory(protocol.category)
 
