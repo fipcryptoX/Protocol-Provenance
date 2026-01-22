@@ -162,6 +162,9 @@ export default function ProfilePage() {
         setStockData(stockMetrics)
         setFlowData(flowMetrics)
 
+        // Chart data is ready - show the page!
+        setLoading(false)
+
         // Determine which Twitter username to use:
         // 1. First priority: Hardcoded overrides
         // 2. Second: Twitter from DeFiLlama API
@@ -170,23 +173,29 @@ export default function ProfilePage() {
                                 protocolDetails?.twitter ||
                                 protocolConfig?.ethos.twitterUsername
 
-        // Fetch Ethos reviews using Twitter username (parallel with metrics)
+        // Fetch Ethos reviews asynchronously in background
+        // This doesn't block chart rendering
         if (twitterUsername) {
-          console.log(`Fetching ALL reviews for @${twitterUsername}`)
-          const reviewsData = await cachedFetch(
+          console.log(`Fetching reviews for @${twitterUsername} in background...`)
+          cachedFetch(
             `all-reviews-twitter-${twitterUsername}`,
             () => getAllReviewsByTwitter(twitterUsername, 1000),
             300000 // 5 min cache
           )
-          setReviews(reviewsData)
-          console.log(`Fetched ${reviewsData.length} reviews`)
+            .then((reviewsData) => {
+              setReviews(reviewsData)
+              console.log(`✓ Loaded ${reviewsData.length} reviews in background`)
+            })
+            .catch((err) => {
+              console.error(`Failed to load reviews for @${twitterUsername}:`, err)
+              // Don't show error to user - chart is already visible
+            })
         } else {
           console.warn(`No Twitter username found for ${protocolName}, skipping reviews`)
         }
       } catch (err) {
         console.error("Error fetching profile data:", err)
         setError("Failed to load profile data. Please try again.")
-      } finally {
         setLoading(false)
       }
     }
