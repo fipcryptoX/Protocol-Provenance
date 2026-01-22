@@ -180,7 +180,20 @@ export async function getLogoFromGeckoId(
   try {
     const coinData = await fetchCoinGeckoData(geckoId)
 
-    if (!coinData || !coinData.image?.large) {
+    if (!coinData) {
+      console.warn(`CoinGecko: No coin data returned for ${geckoId}`)
+      setCache(cacheKey, null)
+      return null
+    }
+
+    if (!coinData.image) {
+      console.warn(`CoinGecko: No image field for ${geckoId}`)
+      setCache(cacheKey, null)
+      return null
+    }
+
+    if (!coinData.image.large) {
+      console.warn(`CoinGecko: No large image for ${geckoId}`)
       setCache(cacheKey, null)
       return null
     }
@@ -198,23 +211,37 @@ export async function getLogoFromGeckoId(
 }
 
 /**
- * Batch fetch logo URLs for multiple gecko_ids
+ * Batch fetch logo URLs for multiple gecko_ids with rate limiting
  */
 export async function batchGetLogosFromGeckoIds(
   geckoIds: string[]
 ): Promise<Record<string, string | null>> {
   console.log(`Fetching logos from CoinGecko for ${geckoIds.length} coins...`)
 
-  const results = await Promise.all(
-    geckoIds.map(async (geckoId) => {
-      const logo = await getLogoFromGeckoId(geckoId)
-      return { geckoId, logo }
-    })
-  )
-
   const logosByGeckoId: Record<string, string | null> = {}
-  for (const { geckoId, logo } of results) {
-    logosByGeckoId[geckoId] = logo
+
+  // Process in batches of 10 with 200ms delay between batches to avoid rate limits
+  const BATCH_SIZE = 10
+  const DELAY_MS = 200
+
+  for (let i = 0; i < geckoIds.length; i += BATCH_SIZE) {
+    const batch = geckoIds.slice(i, i + BATCH_SIZE)
+
+    const results = await Promise.all(
+      batch.map(async (geckoId) => {
+        const logo = await getLogoFromGeckoId(geckoId)
+        return { geckoId, logo }
+      })
+    )
+
+    for (const { geckoId, logo } of results) {
+      logosByGeckoId[geckoId] = logo
+    }
+
+    // Add delay between batches (except for the last batch)
+    if (i + BATCH_SIZE < geckoIds.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS))
+    }
   }
 
   const foundCount = Object.values(logosByGeckoId).filter(l => l !== null).length
