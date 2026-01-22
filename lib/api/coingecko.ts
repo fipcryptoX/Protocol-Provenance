@@ -45,6 +45,11 @@ export interface CoinGeckoData {
     telegram_channel_identifier: string | null
     [key: string]: any
   }
+  image?: {
+    thumb: string
+    small: string
+    large: string
+  }
   [key: string]: any
 }
 
@@ -157,4 +162,63 @@ export async function batchGetTwitterFromGeckoIds(
   console.log(`CoinGecko: Found ${foundCount}/${geckoIds.length} Twitter handles`)
 
   return twitterByGeckoId
+}
+
+/**
+ * Get logo URL from CoinGecko using gecko_id
+ */
+export async function getLogoFromGeckoId(
+  geckoId: string
+): Promise<string | null> {
+  const cacheKey = `coingecko-logo-${geckoId}`
+  const cached = getCached<string | null>(cacheKey)
+
+  if (cached !== undefined) {
+    return cached
+  }
+
+  try {
+    const coinData = await fetchCoinGeckoData(geckoId)
+
+    if (!coinData || !coinData.image?.large) {
+      setCache(cacheKey, null)
+      return null
+    }
+
+    const logoUrl = coinData.image.large
+
+    console.log(`CoinGecko: Found logo for ${geckoId}: ${logoUrl}`)
+    setCache(cacheKey, logoUrl)
+    return logoUrl
+  } catch (error) {
+    console.error(`Error fetching logo for ${geckoId}:`, error)
+    setCache(cacheKey, null)
+    return null
+  }
+}
+
+/**
+ * Batch fetch logo URLs for multiple gecko_ids
+ */
+export async function batchGetLogosFromGeckoIds(
+  geckoIds: string[]
+): Promise<Record<string, string | null>> {
+  console.log(`Fetching logos from CoinGecko for ${geckoIds.length} coins...`)
+
+  const results = await Promise.all(
+    geckoIds.map(async (geckoId) => {
+      const logo = await getLogoFromGeckoId(geckoId)
+      return { geckoId, logo }
+    })
+  )
+
+  const logosByGeckoId: Record<string, string | null> = {}
+  for (const { geckoId, logo } of results) {
+    logosByGeckoId[geckoId] = logo
+  }
+
+  const foundCount = Object.values(logosByGeckoId).filter(l => l !== null).length
+  console.log(`CoinGecko: Found ${foundCount}/${geckoIds.length} logos`)
+
+  return logosByGeckoId
 }

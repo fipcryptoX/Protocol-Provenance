@@ -1,22 +1,23 @@
 /**
  * Chain Logo System
  *
- * Uses DefiLlama CDN logos for all chains.
- * DefiLlama provides publicly accessible chain icons without CORS restrictions.
+ * Uses CoinGecko high-resolution logos fetched via gecko_id.
+ * The enrichment flow in dynamic-chain-data.ts fetches logos from CoinGecko's coins API.
+ * This file provides manual overrides for special cases only.
  */
 
 /**
- * Chain logo URLs from DefiLlama icons CDN
- * Format: https://icons.llama.fi/{chainname}.jpg
+ * Manual logo URL overrides for chains
+ * Only use this for chains that need special handling
  */
 export const CHAIN_LOGO_OVERRIDES: Record<string, string> = {
-  // No overrides needed - using auto-generated DefiLlama URLs
-  // This object is kept for future manual overrides if needed
+  // Add manual overrides here only if needed
+  // Most chains will use logos automatically fetched from CoinGecko
 }
 
 /**
  * Get the logo URL for a chain
- * Uses DefiLlama CDN format: https://icons.llama.fi/{chainname}.jpg
+ * Applies manual overrides if configured, otherwise returns the provided logo
  */
 export function getCorrectChainLogo(chainName: string, fallbackLogo: string | null): string | null {
   const normalizedName = chainName.toLowerCase().replace(/\s+/g, '')
@@ -26,12 +27,6 @@ export function getCorrectChainLogo(chainName: string, fallbackLogo: string | nu
     return CHAIN_LOGO_OVERRIDES[normalizedName]
   }
 
-  // If DefiLlama provided a logo, use it
-  if (fallbackLogo) {
-    return fallbackLogo
-  }
-
-  // Auto-generate logo URL from DefiLlama CDN
-  // Format: https://icons.llama.fi/{chainname}.jpg
-  return `https://icons.llama.fi/${normalizedName}.jpg`
+  // Return the logo provided (from CoinGecko or DeFiLlama)
+  return fallbackLogo
 }

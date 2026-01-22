@@ -20,7 +20,7 @@ import { getUserScoreFromTwitter, getReviewsByTwitter, EthosReview } from "./api
 import { ProtocolCardData, ReviewDistribution } from "./protocol-data"
 import { getCorrectTwitterHandle } from "./twitter-overrides"
 import { getCorrectChainLogo } from "./chain-logo-overrides"
-import { batchGetTwitterFromGeckoIds } from "./api/coingecko"
+import { batchGetTwitterFromGeckoIds, batchGetLogosFromGeckoIds } from "./api/coingecko"
 
 /**
  * Enriched chain with metrics
@@ -54,22 +54,41 @@ export async function fetchFilteredChains(
   // Fetch chain revenue data for filtered chains
   const revenueByChain = await fetchChainRevenue(filtered)
 
-  // Collect gecko_ids for CoinGecko Twitter lookup
+  // Collect gecko_ids for CoinGecko Twitter and logo lookup
   const geckoIds = filtered
     .filter(chain => chain.gecko_id)
     .map(chain => chain.gecko_id as string)
 
   console.log(`Found ${geckoIds.length} chains with gecko_id for CoinGecko lookup`)
 
-  // Batch fetch Twitter handles from CoinGecko
-  const twitterByGeckoId = geckoIds.length > 0
-    ? await batchGetTwitterFromGeckoIds(geckoIds)
-    : {}
+  // Batch fetch Twitter handles and logos from CoinGecko
+  const [twitterByGeckoId, logosByGeckoId] = await Promise.all([
+    geckoIds.length > 0 ? batchGetTwitterFromGeckoIds(geckoIds) : Promise.resolve({}),
+    geckoIds.length > 0 ? batchGetLogosFromGeckoIds(geckoIds) : Promise.resolve({})
+  ])
 
   // Enrich chains with revenue, logo, and Twitter data
   const enriched: EnrichedChain[] = filtered.map(chain => {
     const revenue24h = revenueByChain[chain.name] || 0
-    const correctLogo = getCorrectChainLogo(chain.name, chain.logo || null)
+
+    // Determine logo with priority:
+    // 1. CoinGecko (via gecko_id) - high-res, reliable
+    // 2. DeFiLlama's logo field - fallback
+    // 3. Manual overrides - last resort
+    let logoUrl: string | null = null
+
+    if (chain.gecko_id && logosByGeckoId[chain.gecko_id]) {
+      logoUrl = logosByGeckoId[chain.gecko_id]
+      console.log(`Using CoinGecko logo for ${chain.name}: ${logoUrl}`)
+    } else if (chain.logo) {
+      logoUrl = chain.logo
+      console.log(`Using DeFiLlama logo for ${chain.name}: ${logoUrl}`)
+    } else {
+      console.log(`No logo found for ${chain.name} (gecko_id: ${chain.gecko_id || 'none'})`)
+    }
+
+    // Apply manual overrides if any
+    const correctLogo = getCorrectChainLogo(chain.name, logoUrl)
 
     // Determine Twitter handle with priority:
     // 1. CoinGecko (via gecko_id) - most reliable
