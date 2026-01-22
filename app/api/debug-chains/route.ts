@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { fetchFilteredChains } from '@/lib/dynamic-chain-data'
 import { getUserScoreFromTwitter } from '@/lib/api/ethos'
+import { getCorrectTwitterHandle } from '@/lib/twitter-overrides'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ interface ChainDebugInfo {
   name: string
   hasTwitterHandle: boolean
   twitterHandle: string | null
+  twitterSource: 'manual_override' | 'coingecko' | 'defillama' | 'none'
   hasEthosScore: boolean
   ethosScore: number
   stablecoinMCap: number
@@ -28,12 +30,30 @@ export async function GET() {
     const debugInfo: ChainDebugInfo[] = []
 
     for (const chain of chains) {
-      const hasTwitterHandle = !!chain.twitter
+      const rawTwitter = chain.twitter
+      const finalTwitter = getCorrectTwitterHandle(chain.name, rawTwitter)
+      const hasTwitterHandle = !!finalTwitter
       let hasEthosScore = false
       let ethosScore = 0
 
-      if (hasTwitterHandle && chain.twitter) {
-        const ethosData = await getUserScoreFromTwitter(chain.twitter)
+      // Determine Twitter source
+      let twitterSource: 'manual_override' | 'coingecko' | 'defillama' | 'none' = 'none'
+      if (finalTwitter) {
+        // Check if it's from manual override by seeing if it's different from raw
+        const manualOverride = getCorrectTwitterHandle(chain.name, null)
+        if (manualOverride === finalTwitter) {
+          twitterSource = 'manual_override'
+        } else if (rawTwitter === finalTwitter) {
+          // Same as raw, so it came from the chain data (could be CoinGecko or DeFiLlama)
+          // We can't distinguish here without more context, but based on our flow it's likely CoinGecko
+          twitterSource = 'coingecko'
+        } else {
+          twitterSource = 'defillama'
+        }
+      }
+
+      if (hasTwitterHandle && finalTwitter) {
+        const ethosData = await getUserScoreFromTwitter(finalTwitter)
         if (ethosData) {
           hasEthosScore = true
           ethosScore = ethosData.score
@@ -43,7 +63,8 @@ export async function GET() {
       debugInfo.push({
         name: chain.name,
         hasTwitterHandle,
-        twitterHandle: chain.twitter,
+        twitterHandle: finalTwitter,
+        twitterSource,
         hasEthosScore,
         ethosScore,
         stablecoinMCap: chain.stablecoinMCap
@@ -82,6 +103,7 @@ export async function GET() {
       allChains: debugInfo.map(c => ({
         name: c.name,
         twitter: c.twitterHandle || '❌ MISSING',
+        twitterSource: c.twitterSource,
         ethosScore: c.hasEthosScore ? c.ethosScore : '❌ NOT FOUND',
         stablecoinMCap: `$${(c.stablecoinMCap / 1e6).toFixed(1)}M`
       }))
@@ -105,7 +127,9 @@ export async function GET() {
     console.log('\n⚠️  CHAINS WITH TWITTER BUT NO ETHOS SCORE:')
     console.log('─'.repeat(80))
     chainsWithTwitterButNoEthos.forEach((c, i) => {
-      console.log(`${(i + 1).toString().padStart(3)}. ${c.name.padEnd(30)} | @${c.twitterHandle?.padEnd(20)} | MCap: $${(c.stablecoinMCap / 1e9).toFixed(2)}B`)
+      const source = c.twitterSource === 'manual_override' ? '[OVERRIDE]' :
+                     c.twitterSource === 'coingecko' ? '[COINGECKO]' : '[DEFILLAMA]'
+      console.log(`${(i + 1).toString().padStart(3)}. ${c.name.padEnd(30)} | @${c.twitterHandle?.padEnd(20)} ${source.padEnd(12)} | MCap: $${(c.stablecoinMCap / 1e9).toFixed(2)}B`)
     })
 
     console.log('\n' + '='.repeat(80))
