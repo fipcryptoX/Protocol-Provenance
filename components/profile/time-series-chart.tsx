@@ -155,7 +155,7 @@ export function TimeSeriesChart({
     const { cx, cy, payload, index } = props
 
     if (!payload.reviewCount || payload.reviewCount === 0) {
-      return false
+      return null
     }
 
     const primaryColor = getDotColor(payload.dominantSentiment)
@@ -357,7 +357,7 @@ export function TimeSeriesChart({
             dataKey="stockValue"
             stroke="#3b82f6"
             strokeWidth={2}
-            dot={renderDot}
+            dot={renderDot as any}
             activeDot={false}
             connectNulls
             name={stockLabel}
