@@ -49,6 +49,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<WeeklyReviewData | null>(null)
+  const [selectedWeekReviews, setSelectedWeekReviews] = useState<EthosReview[]>([])
 
   // Fetch data on mount
   useEffect(() => {
@@ -290,7 +291,8 @@ export default function ProfilePage() {
 
       const weekData = weekMap.get(weekStart)!
       weekData.reviewCount++
-      weekData.reviews.push(review)
+      // NOTE: Not storing full review objects here for performance
+      // Reviews are lazy-loaded when a marker is clicked
 
       // Update sentiment counts
       if (review.reviewScore === "POSITIVE") {
@@ -420,7 +422,16 @@ export default function ProfilePage() {
                 stockLabel={stockLabel}
                 flowLabel={flowLabel}
                 reviewData={weeklyReviewData}
-                onMarkerClick={(weekData) => setSelectedWeek(weekData)}
+                onMarkerClick={(weekData) => {
+                  // Lazy load: filter reviews for this specific week
+                  const weekReviews = reviews.filter((review) => {
+                    const reviewTimestamp = new Date(review.createdAt).getTime() / 1000
+                    return reviewTimestamp >= weekData.weekStart && reviewTimestamp < weekData.weekEnd
+                  })
+                  console.log(`[ProfilePage] Lazy loading ${weekReviews.length} reviews for week ${weekData.weekStart}`)
+                  setSelectedWeekReviews(weekReviews)
+                  setSelectedWeek(weekData)
+                }}
                 onMarkerHover={() => {}}
               />
             ) : (
@@ -453,8 +464,12 @@ export default function ProfilePage() {
         {/* Review Modal */}
         <ReviewModal
           isOpen={selectedWeek !== null}
-          onClose={() => setSelectedWeek(null)}
+          onClose={() => {
+            setSelectedWeek(null)
+            setSelectedWeekReviews([])
+          }}
           weekData={selectedWeek}
+          weekReviews={selectedWeekReviews}
           chartData={filteredChartData}
           stockLabel={stockLabel}
           flowLabel={flowLabel}

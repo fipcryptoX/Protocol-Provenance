@@ -14,11 +14,13 @@ import { Badge } from "@/components/ui/badge"
 import { MetricStatCard } from "@/components/ui/metric-stat-card"
 import { WeeklyReviewData, ChartDataPoint } from "@/types"
 import { formatCurrency } from "@/lib/utils"
+import { EthosReview } from "@/lib/api/ethos"
 
 interface ReviewModalProps {
   isOpen: boolean
   onClose: () => void
   weekData: WeeklyReviewData | null
+  weekReviews: EthosReview[] // Lazy-loaded reviews for the selected week
   chartData: ChartDataPoint[]
   stockLabel: string
   flowLabel: string
@@ -28,6 +30,7 @@ export function ReviewModal({
   isOpen,
   onClose,
   weekData,
+  weekReviews,
   chartData,
   stockLabel,
   flowLabel,
@@ -57,24 +60,32 @@ export function ReviewModal({
         flow: p.flow
       })))
 
-      // Prefer points with flow data, then take the most recent
+      // Get the best stock value and flow value separately
+      // (they may come from different data points if APIs don't align perfectly)
+      const pointsWithStock = pointsInWeek.filter(p => p.stock !== null)
       const pointsWithFlow = pointsInWeek.filter(p => p.flow !== null && p.flow > 0)
 
-      if (pointsWithFlow.length > 0) {
-        console.log(`[ReviewModal] ${pointsWithFlow.length} points have flow data`)
-        // Take the most recent point with flow data
-        const dataPoint = pointsWithFlow[pointsWithFlow.length - 1]
-        console.log(`[ReviewModal] Selected point:`, {
-          timestamp: new Date(dataPoint.timestamp * 1000).toISOString(),
-          stock: dataPoint.stock,
-          flow: dataPoint.flow
-        })
-        return dataPoint
-      }
+      console.log(`[ReviewModal] ${pointsWithStock.length} points have stock, ${pointsWithFlow.length} have flow`)
 
-      // Otherwise take the most recent point
-      console.log(`[ReviewModal] No points with flow data, using most recent`)
-      return pointsInWeek[pointsInWeek.length - 1]
+      // Take the most recent stock value
+      const bestStock = pointsWithStock.length > 0
+        ? pointsWithStock[pointsWithStock.length - 1].stock
+        : null
+
+      // Take the most recent flow value
+      const bestFlow = pointsWithFlow.length > 0
+        ? pointsWithFlow[pointsWithFlow.length - 1].flow
+        : null
+
+      console.log(`[ReviewModal] Best stock: ${bestStock}, Best flow: ${bestFlow}`)
+
+      // Return a composite snapshot with the best of both
+      return {
+        timestamp: pointsInWeek[pointsInWeek.length - 1].timestamp,
+        date: pointsInWeek[pointsInWeek.length - 1].date,
+        stock: bestStock,
+        flow: bestFlow,
+      }
     }
 
     // If no exact match, find the closest point before or during the week
@@ -104,8 +115,8 @@ export function ReviewModal({
 
   // Sort and filter reviews
   const sortedReviews = useMemo(() => {
-    if (!weekData) return []
-    let filtered = [...weekData.reviews]
+    if (!weekReviews || weekReviews.length === 0) return []
+    let filtered = [...weekReviews]
 
     // Apply sentiment filter
     if (sentimentFilter !== "ALL") {
@@ -114,7 +125,7 @@ export function ReviewModal({
 
     // Sort by Ethos score (highest first)
     return filtered.sort((a, b) => b.author.score - a.author.score)
-  }, [weekData, sentimentFilter])
+  }, [weekReviews, sentimentFilter])
 
   if (!weekData) return null
 
