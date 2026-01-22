@@ -86,24 +86,103 @@ export default function ProfilePage() {
 
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
-        // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'scroll', 'hyperliquid-l1']
+        // Detect if this is a chain (comprehensive chain list)
+        const commonChains = [
+          // Layer 1s
+          'ethereum', 'bitcoin', 'solana', 'tron', 'sui', 'aptos', 'near', 'cardano', 'polkadot',
+          'avalanche', 'polygon', 'fantom', 'algorand', 'tezos', 'stellar', 'ton', 'icp',
+          'cosmos', 'osmosis', 'injective', 'sei', 'waves', 'flow', 'hedera', 'stacks',
+          // Layer 2s & Sidechains
+          'base', 'arbitrum', 'optimism', 'polygon zkevm', 'zksync', 'scroll', 'linea',
+          'blast', 'metis', 'boba', 'immutable x', 'immutable zkevm', 'loopring', 'zora',
+          'manta', 'mantle', 'taiko',
+          // Alt L1s & App Chains
+          'berachain', 'monad', 'sonic', 'kava', 'hyperliquid l1', 'hyperliquid-l1',
+          'canto', 'cronos', 'moonbeam', 'moonriver', 'flare', 'world chain', 'abstract',
+          'soneium', 'movement', 'mezo', 'noble', 'plume mainnet', 'katana',
+          // Others
+          'binance', 'bsc', 'plasma', 'okexchain', 'xdc', 'smartbch', 'mixin', 'provenance',
+          'corn', 'fogo'
+        ]
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
         const chainNameMapping: Record<string, string> = {
+          // Layer 1s
           'ethereum': 'Ethereum',
-          'base': 'Base',
+          'bitcoin': 'Bitcoin',
           'solana': 'Solana',
           'tron': 'Tron',
+          'sui': 'Sui',
+          'aptos': 'Aptos',
+          'near': 'Near',
+          'cardano': 'Cardano',
+          'polkadot': 'Polkadot',
+          'avalanche': 'Avalanche',
+          'polygon': 'Polygon',
+          'fantom': 'Fantom',
+          'algorand': 'Algorand',
+          'tezos': 'Tezos',
+          'stellar': 'Stellar',
+          'ton': 'TON',
+          'icp': 'ICP',
+          'cosmos': 'Cosmos',
+          'osmosis': 'Osmosis',
+          'injective': 'Injective',
+          'sei': 'Sei',
+          'waves': 'Waves',
+          'flow': 'Flow',
+          'hedera': 'Hedera',
+          'stacks': 'Stacks',
+          // Layer 2s & Sidechains
+          'base': 'Base',
           'arbitrum': 'Arbitrum',
           'optimism': 'Optimism',
-          'polygon': 'Polygon',
-          'avalanche': 'Avalanche',
-          'bsc': 'BSC',
-          'fantom': 'Fantom',
+          'polygon zkevm': 'Polygon zkEVM',
+          'zksync': 'zkSync',
           'scroll': 'Scroll',
+          'linea': 'Linea',
+          'blast': 'Blast',
+          'metis': 'Metis',
+          'boba': 'Boba',
+          'immutable x': 'Immutable X',
+          'immutable zkevm': 'Immutable zkEVM',
+          'loopring': 'Loopring',
+          'zora': 'Zora',
+          'manta': 'Manta',
+          'mantle': 'Mantle',
+          'taiko': 'Taiko',
+          // Alt L1s & App Chains
+          'berachain': 'Berachain',
+          'monad': 'Monad',
+          'sonic': 'Sonic',
+          'kava': 'Kava',
+          'hyperliquid l1': 'Hyperliquid L1',
           'hyperliquid-l1': 'Hyperliquid L1',
+          'canto': 'Canto',
+          'cronos': 'Cronos',
+          'moonbeam': 'Moonbeam',
+          'moonriver': 'Moonriver',
+          'flare': 'Flare',
+          'world chain': 'World Chain',
+          'abstract': 'Abstract',
+          'soneium': 'Soneium',
+          'movement': 'Movement',
+          'mezo': 'Mezo',
+          'noble': 'Noble',
+          'plume mainnet': 'Plume Mainnet',
+          'katana': 'Katana',
+          // Others
+          'binance': 'Binance',
+          'bsc': 'BSC',
+          'plasma': 'Plasma',
+          'okexchain': 'OKExChain',
+          'xdc': 'XDC',
+          'smartbch': 'SmartBCH',
+          'mixin': 'Mixin',
+          'provenance': 'Provenance',
+          'corn': 'Corn',
+          'fogo': 'Fogo'
         }
 
         // Get the properly formatted chain name for API calls
@@ -362,11 +441,27 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'scroll', 'hyperliquid-l1']
+  const commonChains = [
+    // Layer 1s
+    'ethereum', 'bitcoin', 'solana', 'tron', 'sui', 'aptos', 'near', 'cardano', 'polkadot',
+    'avalanche', 'polygon', 'fantom', 'algorand', 'tezos', 'stellar', 'ton', 'icp',
+    'cosmos', 'osmosis', 'injective', 'sei', 'waves', 'flow', 'hedera', 'stacks',
+    // Layer 2s & Sidechains
+    'base', 'arbitrum', 'optimism', 'polygon zkevm', 'zksync', 'scroll', 'linea',
+    'blast', 'metis', 'boba', 'immutable x', 'immutable zkevm', 'loopring', 'zora',
+    'manta', 'mantle', 'taiko',
+    // Alt L1s & App Chains
+    'berachain', 'monad', 'sonic', 'kava', 'hyperliquid l1', 'hyperliquid-l1',
+    'canto', 'cronos', 'moonbeam', 'moonriver', 'flare', 'world chain', 'abstract',
+    'soneium', 'movement', 'mezo', 'noble', 'plume mainnet', 'katana',
+    // Others
+    'binance', 'bsc', 'plasma', 'okexchain', 'xdc', 'smartbch', 'mixin', 'provenance',
+    'corn', 'fogo'
+  ]
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
-  const flowLabel = isChain ? "24h App Revenue" : "Revenue (7d)"
+  const flowLabel = isChain ? "7d App Revenue" : "Revenue (7d)"
 
   // Handle loading state
   if (loading) {
