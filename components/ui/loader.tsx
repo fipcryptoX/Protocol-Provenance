@@ -445,7 +445,7 @@ export function TextDotsLoader({
       <span className={cn("text-primary font-medium", textSizes[size])}>
         {text}
       </span>
-      <span className="inline-flex">
+      <span className="inline-flex ml-1">
         <span className="text-primary animate-[loading-dots_1.4s_infinite_0.2s]">
           .
         </span>
