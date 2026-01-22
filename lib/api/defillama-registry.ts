@@ -93,7 +93,8 @@ export async function fetchAllProtocols(): Promise<DefiLlamaProtocol[]> {
     return data
   } catch (error) {
     console.error("Error fetching protocols from DefiLlama:", error)
-    throw error
+    // Return empty array on error to allow build to continue
+    return []
   }
 }
 

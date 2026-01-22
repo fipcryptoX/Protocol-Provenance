@@ -38,6 +38,7 @@ import {
 import { cachedFetch } from "@/lib/cache"
 import { CATEGORY_METRICS } from "@/types"
 import { PROTOCOLS } from "@/lib/protocol-config"
+import { getCorrectTwitterHandle } from "@/lib/twitter-overrides"
 
 export default function ProfilePage() {
   const params = useParams()
@@ -85,22 +86,103 @@ export default function ProfilePage() {
 
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
-        // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+        // Detect if this is a chain (comprehensive chain list)
+        const commonChains = [
+          // Layer 1s
+          'ethereum', 'bitcoin', 'solana', 'tron', 'sui', 'aptos', 'near', 'cardano', 'polkadot',
+          'avalanche', 'polygon', 'fantom', 'algorand', 'tezos', 'stellar', 'ton', 'icp',
+          'cosmos', 'osmosis', 'injective', 'sei', 'waves', 'flow', 'hedera', 'stacks',
+          // Layer 2s & Sidechains
+          'base', 'arbitrum', 'optimism', 'polygon zkevm', 'zksync', 'scroll', 'linea',
+          'blast', 'metis', 'boba', 'immutable x', 'immutable zkevm', 'loopring', 'zora',
+          'manta', 'mantle', 'taiko',
+          // Alt L1s & App Chains
+          'berachain', 'monad', 'sonic', 'kava', 'hyperliquid l1', 'hyperliquid-l1',
+          'canto', 'cronos', 'moonbeam', 'moonriver', 'flare', 'world chain', 'abstract',
+          'soneium', 'movement', 'mezo', 'noble', 'plume mainnet', 'katana',
+          // Others
+          'binance', 'bsc', 'plasma', 'okexchain', 'xdc', 'smartbch', 'mixin', 'provenance',
+          'corn', 'fogo'
+        ]
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
         const chainNameMapping: Record<string, string> = {
+          // Layer 1s
           'ethereum': 'Ethereum',
-          'base': 'Base',
+          'bitcoin': 'Bitcoin',
           'solana': 'Solana',
           'tron': 'Tron',
+          'sui': 'Sui',
+          'aptos': 'Aptos',
+          'near': 'Near',
+          'cardano': 'Cardano',
+          'polkadot': 'Polkadot',
+          'avalanche': 'Avalanche',
+          'polygon': 'Polygon',
+          'fantom': 'Fantom',
+          'algorand': 'Algorand',
+          'tezos': 'Tezos',
+          'stellar': 'Stellar',
+          'ton': 'TON',
+          'icp': 'ICP',
+          'cosmos': 'Cosmos',
+          'osmosis': 'Osmosis',
+          'injective': 'Injective',
+          'sei': 'Sei',
+          'waves': 'Waves',
+          'flow': 'Flow',
+          'hedera': 'Hedera',
+          'stacks': 'Stacks',
+          // Layer 2s & Sidechains
+          'base': 'Base',
           'arbitrum': 'Arbitrum',
           'optimism': 'Optimism',
-          'polygon': 'Polygon',
-          'avalanche': 'Avalanche',
+          'polygon zkevm': 'Polygon zkEVM',
+          'zksync': 'zkSync',
+          'scroll': 'Scroll',
+          'linea': 'Linea',
+          'blast': 'Blast',
+          'metis': 'Metis',
+          'boba': 'Boba',
+          'immutable x': 'Immutable X',
+          'immutable zkevm': 'Immutable zkEVM',
+          'loopring': 'Loopring',
+          'zora': 'Zora',
+          'manta': 'Manta',
+          'mantle': 'Mantle',
+          'taiko': 'Taiko',
+          // Alt L1s & App Chains
+          'berachain': 'Berachain',
+          'monad': 'Monad',
+          'sonic': 'Sonic',
+          'kava': 'Kava',
+          'hyperliquid l1': 'Hyperliquid L1',
+          'hyperliquid-l1': 'Hyperliquid L1',
+          'canto': 'Canto',
+          'cronos': 'Cronos',
+          'moonbeam': 'Moonbeam',
+          'moonriver': 'Moonriver',
+          'flare': 'Flare',
+          'world chain': 'World Chain',
+          'abstract': 'Abstract',
+          'soneium': 'Soneium',
+          'movement': 'Movement',
+          'mezo': 'Mezo',
+          'noble': 'Noble',
+          'plume mainnet': 'Plume Mainnet',
+          'katana': 'Katana',
+          // Others
+          'binance': 'Binance',
           'bsc': 'BSC',
-          'fantom': 'Fantom',
+          'plasma': 'Plasma',
+          'okexchain': 'OKExChain',
+          'xdc': 'XDC',
+          'smartbch': 'SmartBCH',
+          'mixin': 'Mixin',
+          'provenance': 'Provenance',
+          'corn': 'Corn',
+          'fogo': 'Fogo'
         }
 
         // Get the properly formatted chain name for API calls
@@ -108,22 +190,16 @@ export default function ProfilePage() {
           ? (chainNameMapping[protocolName.toLowerCase()] || protocolName)
           : protocolName
 
-        // Twitter username resolution with hardcoded overrides for specific entities
-        const twitterOverrides: Record<string, string> = {
-          'base': 'base',
-          'eigencloud': 'eigencloud',
-          'lido': 'LidoFinance',
-          'binance-staked-eth': 'binance',
-        }
-
         // Fetch all data in parallel for maximum speed
         const [protocolDetails, metricsData] = await Promise.all([
-          // Fetch protocol details
-          cachedFetch(
-            `protocol-details-${defillamaSlug}`,
-            () => getProtocolDetails(defillamaSlug),
-            900000 // 15 min cache
-          ),
+          // Fetch protocol details (skip for chains as they don't have protocol data)
+          isChain
+            ? Promise.resolve(null)
+            : cachedFetch(
+                `protocol-details-${defillamaSlug}`,
+                () => getProtocolDetails(defillamaSlug),
+                900000 // 15 min cache
+              ),
           // Fetch metrics based on chain vs protocol
           isChain
             ? Promise.all([
@@ -176,12 +252,11 @@ export default function ProfilePage() {
         setLoading(false)
 
         // Determine which Twitter username to use:
-        // 1. First priority: Hardcoded overrides
-        // 2. Second: Twitter from DeFiLlama API
+        // 1. Use shared twitter-overrides function to check overrides by protocol name
+        // 2. If no override, use Twitter from DeFiLlama API
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
-        const twitterUsername = twitterOverrides[protocolName.toLowerCase()] ||
-                                protocolDetails?.twitter ||
-                                protocolConfig?.ethos.twitterUsername
+        const apiTwitterHandle = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
+        const twitterUsername = getCorrectTwitterHandle(protocolName, apiTwitterHandle)
 
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
@@ -366,11 +441,27 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom']
+  const commonChains = [
+    // Layer 1s
+    'ethereum', 'bitcoin', 'solana', 'tron', 'sui', 'aptos', 'near', 'cardano', 'polkadot',
+    'avalanche', 'polygon', 'fantom', 'algorand', 'tezos', 'stellar', 'ton', 'icp',
+    'cosmos', 'osmosis', 'injective', 'sei', 'waves', 'flow', 'hedera', 'stacks',
+    // Layer 2s & Sidechains
+    'base', 'arbitrum', 'optimism', 'polygon zkevm', 'zksync', 'scroll', 'linea',
+    'blast', 'metis', 'boba', 'immutable x', 'immutable zkevm', 'loopring', 'zora',
+    'manta', 'mantle', 'taiko',
+    // Alt L1s & App Chains
+    'berachain', 'monad', 'sonic', 'kava', 'hyperliquid l1', 'hyperliquid-l1',
+    'canto', 'cronos', 'moonbeam', 'moonriver', 'flare', 'world chain', 'abstract',
+    'soneium', 'movement', 'mezo', 'noble', 'plume mainnet', 'katana',
+    // Others
+    'binance', 'bsc', 'plasma', 'okexchain', 'xdc', 'smartbch', 'mixin', 'provenance',
+    'corn', 'fogo'
+  ]
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
-  const flowLabel = isChain ? "App Revenue (7d)" : "Revenue (7d)"
+  const flowLabel = isChain ? "7d App Revenue" : "Revenue (7d)"
 
   // Handle loading state
   if (loading) {

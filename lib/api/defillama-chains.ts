@@ -313,13 +313,56 @@ export async function getHistoricalRevenueForChain(
       return []
     }
 
-    // Convert [timestamp, value] pairs to objects
-    return data.totalDataChart.map(([timestamp, value]: [number, number]) => ({
+    // Convert [timestamp, value] pairs to objects and calculate 7-day rolling sum
+    const dailyData = data.totalDataChart.map(([timestamp, value]: [number, number]) => ({
       timestamp,
       value,
     }))
+
+    return calculate7DayRollingSum(dailyData)
   } catch (error) {
     console.error(`Error fetching historical revenue for ${chainName}:`, error)
     return []
   }
+}
+
+/**
+ * Calculate 7-day rolling sum from daily revenue data
+ * Each data point represents the sum of revenue for the 7 days ending on that date
+ */
+export function calculate7DayRollingSum(dailyData: HistoricalDataPoint[]): HistoricalDataPoint[] {
+  if (dailyData.length === 0) return []
+
+  // Sort by timestamp to ensure correct order
+  const sorted = [...dailyData].sort((a, b) => a.timestamp - b.timestamp)
+  const result: HistoricalDataPoint[] = []
+
+  for (let i = 0; i < sorted.length; i++) {
+    // Calculate sum of current day plus previous 6 days (7 days total)
+    const startIndex = Math.max(0, i - 6)
+    let sum = 0
+
+    for (let j = startIndex; j <= i; j++) {
+      sum += sorted[j].value
+    }
+
+    result.push({
+      timestamp: sorted[i].timestamp,
+      value: sum
+    })
+  }
+
+  return result
+}
+
+/**
+ * Get the most recent 7-day revenue sum for a chain
+ */
+export async function get7DayRevenueForChain(chainName: string): Promise<number> {
+  const historicalData = await getHistoricalRevenueForChain(chainName)
+
+  if (historicalData.length === 0) return 0
+
+  // The last data point is already the 7-day rolling sum
+  return historicalData[historicalData.length - 1].value
 }

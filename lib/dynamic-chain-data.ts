@@ -14,6 +14,7 @@ import {
   fetchChainRevenue,
   fetchStablecoinMCapByChain,
   filterChainsByStablecoinMCap,
+  get7DayRevenueForChain,
   DefiLlamaChain
 } from "./api/defillama-chains"
 import { getUserScoreFromTwitter, getReviewsByTwitter, EthosReview } from "./api/ethos"
@@ -29,7 +30,7 @@ export interface EnrichedChain {
   stablecoinMCap: number
   logo: string | null
   twitter: string | null
-  revenue24h: number
+  revenue7d: number
 }
 
 /**
@@ -40,6 +41,11 @@ export async function fetchFilteredChains(
 ): Promise<EnrichedChain[]> {
   console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000}M...`)
 
+  // Chains to exclude from the dashboard
+  const excludedChains = new Set([
+    'fantom',
+  ])
+
   // Fetch all chains
   const allChains = await fetchAllChains()
 
@@ -48,14 +54,13 @@ export async function fetchFilteredChains(
 
   // Filter by Stablecoin MCap
   const filtered = filterChainsByStablecoinMCap(allChains, stableMCapByChain, minMCap)
+    .filter(chain => !excludedChains.has(chain.name.toLowerCase()))
   console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000}M`)
 
-  // Fetch chain revenue data for filtered chains
-  const revenueByChain = await fetchChainRevenue(filtered)
-
-  // Enrich chains with revenue and apply logo overrides
-  const enriched: EnrichedChain[] = filtered.map(chain => {
-    const revenue24h = revenueByChain[chain.name] || 0
+  // Fetch 7-day revenue data for filtered chains in parallel
+  console.log(`Fetching 7-day revenue data for ${filtered.length} chains...`)
+  const revenuePromises = filtered.map(async (chain) => {
+    const revenue7d = await get7DayRevenueForChain(chain.name)
     const correctLogo = getCorrectChainLogo(chain.name, chain.logo || null)
 
     return {
@@ -63,11 +68,12 @@ export async function fetchFilteredChains(
       stablecoinMCap: chain.stablecoinMCap,
       logo: correctLogo,
       twitter: chain.twitter || null,
-      revenue24h
+      revenue7d
     }
   })
 
-  console.log(`Enriched ${enriched.length} chains with revenue data`)
+  const enriched = await Promise.all(revenuePromises)
+  console.log(`Enriched ${enriched.length} chains with 7-day revenue data`)
   return enriched
 }
 
@@ -106,7 +112,7 @@ export async function buildChainCardData(
 ): Promise<ProtocolCardData | null> {
   console.log(`Building card data for ${chain.name} chain...`)
   console.log(`  Stablecoin MCap: $${chain.stablecoinMCap.toLocaleString()}`)
-  console.log(`  Revenue 24h: $${chain.revenue24h.toLocaleString()}`)
+  console.log(`  Revenue 7d: $${chain.revenue7d.toLocaleString()}`)
 
   // Stock metric: Stablecoin MCap
   const stockValue = chain.stablecoinMCap
@@ -115,10 +121,10 @@ export async function buildChainCardData(
     return null
   }
 
-  // Flow metric: App Revenue (24h)
-  const flowValue = chain.revenue24h
+  // Flow metric: App Revenue (7d)
+  const flowValue = chain.revenue7d
   if (flowValue === 0) {
-    console.warn(`${chain.name} has zero revenue, skipping`)
+    console.warn(`${chain.name} has zero 7-day revenue, skipping`)
     return null
   }
 
@@ -142,7 +148,7 @@ export async function buildChainCardData(
         console.warn(`Twitter user ${correctTwitterHandle} not found in Ethos for ${chain.name}`)
       }
 
-      // Fetch reviews for distribution
+      // Fetch reviews for distribution (limit to 100 for dashboard performance)
       const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 100)
       if (reviewsData && reviewsData.reviews.length > 0) {
         reviewDistribution = calculateReviewDistribution(reviewsData.reviews)
@@ -172,7 +178,7 @@ export async function buildChainCardData(
       valueUsd: stockValue
     },
     flowMetric: {
-      label: "24h App Revenue",
+      label: "7d App Revenue",
       valueUsd: flowValue
     },
     reviewDistribution

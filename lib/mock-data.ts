@@ -184,30 +184,4 @@ export const mockProtocols: Protocol[] = [
     },
     timeframe: "30d",
   },
-  {
-    id: "across",
-    name: "Across Protocol",
-    category: "Bridge",
-    url: "https://across.to",
-    description: "Optimistic bridge for fast, cheap, and secure cross-chain transfers",
-    chains: ["Ethereum", "Arbitrum", "Optimism", "Polygon"],
-    ethos: {
-      score: 7.2,
-      reviewCount: 78,
-      sentiment: 0.72,
-    },
-    metrics: {
-      stock: {
-        label: CATEGORY_METRICS["Bridge"].stock.label,
-        value: 340_000_000,
-        unit: CATEGORY_METRICS["Bridge"].stock.unit,
-      },
-      flow: {
-        label: CATEGORY_METRICS["Bridge"].flow.label,
-        value: 1_200_000_000,
-        unit: CATEGORY_METRICS["Bridge"].flow.unit,
-      },
-    },
-    timeframe: "30d",
-  },
 ];

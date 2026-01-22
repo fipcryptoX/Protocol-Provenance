@@ -58,10 +58,27 @@ export async function fetchFilteredProtocols(
     'eigencloud': 'EigenCloud',
   }
 
+  // Protocols to exclude from the dashboard
+  const excludedProtocols = new Set([
+    'jupiter staked sol',
+    'jupiter perp exchange',
+    'uniswap v2',
+    'polygon staking and bridging',
+    'spark savings',
+    'polygon bridge & staking',
+    'jupiter perpetual',
+  ])
+
   // Normalize and enrich
   const enriched: EnrichedProtocol[] = []
 
   for (const protocol of filtered) {
+    // Check if protocol should be excluded
+    if (excludedProtocols.has(protocol.name.toLowerCase())) {
+      console.log(`Skipping ${protocol.name} - explicitly excluded`)
+      continue
+    }
+
     // Normalize category
     const normalizedCategory = normalizeCategory(protocol.category)
 
@@ -255,7 +272,7 @@ export async function buildProtocolCardData(
         console.warn(`Twitter user ${correctTwitterHandle} not found in Ethos for ${protocol.name}`)
       }
 
-      // Fetch reviews for distribution
+      // Fetch reviews for distribution (limit to 100 for dashboard performance)
       const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 100)
       if (reviewsData && reviewsData.reviews.length > 0) {
         reviewDistribution = calculateReviewDistribution(reviewsData.reviews)

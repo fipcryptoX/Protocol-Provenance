@@ -10,6 +10,10 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "eigencloud": "eigencloud",
   "eigenlayer": "eigencloud",
   "morpho": "morpho",
+  "lido": "LidoFinance",
+  "binance-staked-eth": "binance",
+  "uniswap": "Uniswap",
+  "raydium": "raydium",
 
   // Chain overrides - Layer 1s
   "ethereum": "ethereum",
@@ -59,7 +63,7 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
 
   // Chain overrides - Alt L1s & App Chains
   "berachain": "berachain",
-  "monad": "monad_xyz",
+  "monad": "monad",
   "sonic": "SonicLabs",
   "kava": "kava_platform",
   "hyperliquid l1": "HyperliquidX",
