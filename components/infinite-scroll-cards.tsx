@@ -41,6 +41,8 @@ export function InfiniteScrollCards({ initialCards, cardsPerPage = 15 }: Infinit
 
       if (cardsNeedingEthos.length === 0) return
 
+      console.log(`[Ethos] Loading Ethos data for ${cardsNeedingEthos.length} cards...`)
+
       // Load Ethos data in sequence to avoid rate limits
       for (const card of cardsNeedingEthos) {
         // Skip if already loaded
@@ -50,7 +52,10 @@ export function InfiniteScrollCards({ initialCards, cardsPerPage = 15 }: Infinit
         const twitterMatch = card.tags?.find(tag => tag.startsWith('@'))
         const twitterUsername = twitterMatch?.substring(1)
 
+        console.log(`[Ethos] Processing ${card.name} - Twitter: ${twitterUsername || 'none'}`)
+
         if (!twitterUsername) {
+          console.warn(`[Ethos] No Twitter handle for ${card.name}, skipping`)
           // Mark as loaded even without Twitter
           setDisplayedCards(prev =>
             prev.map(c =>
@@ -63,11 +68,14 @@ export function InfiniteScrollCards({ initialCards, cardsPerPage = 15 }: Infinit
         }
 
         try {
+          console.log(`[Ethos] Fetching score for @${twitterUsername}...`)
           // Fetch Ethos score
           const ethosData = await getUserScoreFromTwitter(twitterUsername)
           const ethosScore = ethosData?.score || 0
+          console.log(`[Ethos] Score for ${card.name}: ${ethosScore}`)
 
           // Fetch reviews for distribution
+          console.log(`[Ethos] Fetching reviews for @${twitterUsername}...`)
           const reviewsData = await getReviewsByTwitter(twitterUsername, 1000)
           let reviewDistribution: ReviewDistribution = { negative: 0, neutral: 0, positive: 0 }
 
@@ -85,6 +93,9 @@ export function InfiniteScrollCards({ initialCards, cardsPerPage = 15 }: Infinit
                   break
               }
             })
+            console.log(`[Ethos] Reviews for ${card.name}:`, reviewDistribution)
+          } else {
+            console.warn(`[Ethos] No reviews found for ${card.name}`)
           }
 
           // Update card with Ethos data
@@ -105,7 +116,7 @@ export function InfiniteScrollCards({ initialCards, cardsPerPage = 15 }: Infinit
           // Add delay to respect rate limits (1 second between calls)
           await new Promise(resolve => setTimeout(resolve, 1000))
         } catch (error) {
-          console.error(`Failed to load Ethos for ${card.name}:`, error)
+          console.error(`[Ethos] Failed to load Ethos for ${card.name}:`, error)
           // Mark as loaded to prevent retry loops
           setDisplayedCards(prev =>
             prev.map(c =>

@@ -21,13 +21,13 @@ import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
   // Dynamically build all protocol cards from DefiLlama
-  // Filters protocols with TVL >= $1B
-  const protocolCards = await buildAllProtocolCards(1_000_000_000)
+  // Filters protocols with TVL >= $5B
+  const protocolCards = await buildAllProtocolCards(5_000_000_000)
 
   // Dynamically build all chain cards from DefiLlama
-  // Filters chains with Stablecoin MCap >= $5M
+  // Filters chains with Stablecoin MCap >= $400M
   // Skip Ethos during build - will be loaded client-side with infinite scroll
-  const chainCards = await buildAllChainCards(5_000_000, true)
+  const chainCards = await buildAllChainCards(400_000_000, true)
 
   // Combine all cards
   const allCards = [...protocolCards, ...chainCards]
