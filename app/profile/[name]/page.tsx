@@ -88,7 +88,7 @@ export default function ProfilePage() {
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
         // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain']
+        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis']
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
@@ -106,6 +106,13 @@ export default function ProfilePage() {
           'blast': 'Blast',
           'ronin': 'Ronin',
           'berachain': 'Berachain',
+          'sonic': 'Sonic',
+          'monad': 'Monad',
+          'hyperliquid': 'Hyperliquid',
+          'katana': 'Katana',
+          'kava': 'Kava',
+          'okexchain': 'OKExChain',
+          'metis': 'Metis',
         }
 
         // Get the properly formatted chain name for API calls
@@ -375,7 +382,7 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain']
+  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis']
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"

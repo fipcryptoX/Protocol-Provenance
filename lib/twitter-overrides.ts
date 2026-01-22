@@ -25,6 +25,15 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "avalanche": "avax",
   "bsc": "BNBCHAIN",
   "binance": "BNBCHAIN",
+  "sonic": "SonicLabs",
+  "monad": "monad_xyz",
+  "hyperliquid": "HyperliquidX",
+  "hyperliquid l1": "HyperliquidX",
+  "katana": "SkyMavisHQ",
+  "kava": "kava_platform",
+  "okexchain": "OKX",
+  "metis": "MetisL2",
+  "berachain": "berachain",
 }
 
 /**
