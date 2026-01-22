@@ -16,7 +16,7 @@ import { buildAllProtocolCards } from "@/lib/dynamic-protocol-data"
 import { buildAllChainCards } from "@/lib/dynamic-chain-data"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { InfiniteScrollCards } from "@/components/infinite-scroll-cards"
+import { AssetCard } from "@/components/ui/asset-card"
 import { AlertCircle } from "lucide-react"
 
 export default async function Home() {
@@ -26,16 +26,18 @@ export default async function Home() {
 
   // Dynamically build all chain cards from DefiLlama
   // Filters chains with Stablecoin MCap >= $400M
-  // Skip Ethos during build - will be loaded client-side with infinite scroll
-  const chainCards = await buildAllChainCards(400_000_000, true)
+  // Skip Ethos and CoinGecko during build for faster builds
+  const chainCards = await buildAllChainCards(400_000_000, true, true)
 
   // Combine all cards
   const allCards = [...protocolCards, ...chainCards]
 
+  console.log(`Total cards: ${allCards.length} (${protocolCards.length} protocols, ${chainCards.length} chains)`)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-7xl mx-auto space-y-8">
           {/* Header with Theme Toggle */}
           <div className="flex items-center justify-between">
             <div className="flex-1" />
@@ -52,9 +54,23 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Protocol and Chain Cards with Infinite Scroll */}
+          {/* Protocol and Chain Cards Grid */}
           {allCards.length > 0 ? (
-            <InfiniteScrollCards initialCards={allCards} cardsPerPage={15} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allCards.map((card) => (
+                <AssetCard
+                  key={card.name}
+                  name={card.name}
+                  avatarUrl={card.avatarUrl}
+                  ethosScore={card.ethosScore}
+                  category={card.category}
+                  tags={card.tags}
+                  stockMetric={card.stockMetric}
+                  flowMetric={card.flowMetric}
+                  reviewDistribution={card.reviewDistribution}
+                />
+              ))}
+            </div>
           ) : (
             <Alert>
               <AlertCircle className="h-4 w-4" />
