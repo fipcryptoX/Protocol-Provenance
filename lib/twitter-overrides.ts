@@ -21,6 +21,7 @@ export const TWITTER_OVERRIDES: Record<string, string> = {
   "solana": "solana",
   "tron": "tronfoundation",
   "arbitrum": "arbitrum",
+  "stable": "stable",
   "optimism": "Optimism",
   "avalanche": "avax",
   "bsc": "BNBCHAIN",
