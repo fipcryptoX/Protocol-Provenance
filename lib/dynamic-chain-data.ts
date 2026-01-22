@@ -3,7 +3,7 @@
  *
  * Automatically generates chain cards from DefiLlama data:
  * 1. Fetches all chains and stablecoin market caps
- * 2. Filters by Stablecoin MCap >= $5B
+ * 2. Filters by Stablecoin MCap >= $5M
  * 3. Fetches chain revenue data (app revenue 24h)
  * 4. Fetches Ethos scores from Twitter
  * 5. Returns normalized ProtocolCardData for rendering
@@ -16,8 +16,8 @@ import {
   filterChainsByStablecoinMCap,
   DefiLlamaChain
 } from "./api/defillama-chains"
-import { getUserScoreFromTwitter } from "./api/ethos"
-import { ProtocolCardData } from "./protocol-data"
+import { getUserScoreFromTwitter, getReviewsByTwitter, EthosReview } from "./api/ethos"
+import { ProtocolCardData, ReviewDistribution } from "./protocol-data"
 import { getCorrectTwitterHandle } from "./twitter-overrides"
 import { getCorrectChainLogo } from "./chain-logo-overrides"
 
@@ -36,9 +36,9 @@ export interface EnrichedChain {
  * Fetch and filter chains by Stablecoin MCap
  */
 export async function fetchFilteredChains(
-  minMCap: number = 5_000_000_000
+  minMCap: number = 5_000_000
 ): Promise<EnrichedChain[]> {
-  console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000_000}B...`)
+  console.log(`Fetching chains with Stablecoin MCap >= $${minMCap / 1_000_000}M...`)
 
   // Fetch all chains
   const allChains = await fetchAllChains()
@@ -48,7 +48,7 @@ export async function fetchFilteredChains(
 
   // Filter by Stablecoin MCap
   const filtered = filterChainsByStablecoinMCap(allChains, stableMCapByChain, minMCap)
-  console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000_000}B`)
+  console.log(`Found ${filtered.length} chains with Stablecoin MCap >= $${minMCap / 1_000_000}M`)
 
   // Fetch chain revenue data for filtered chains
   const revenueByChain = await fetchChainRevenue(filtered)
@@ -72,12 +72,41 @@ export async function fetchFilteredChains(
 }
 
 /**
+ * Calculate review distribution from reviews
+ */
+function calculateReviewDistribution(reviews: EthosReview[]): ReviewDistribution {
+  const distribution: ReviewDistribution = {
+    negative: 0,
+    neutral: 0,
+    positive: 0,
+  }
+
+  reviews.forEach((review) => {
+    switch (review.reviewScore) {
+      case "NEGATIVE":
+        distribution.negative++
+        break
+      case "NEUTRAL":
+        distribution.neutral++
+        break
+      case "POSITIVE":
+        distribution.positive++
+        break
+    }
+  })
+
+  return distribution
+}
+
+/**
  * Build chain card data for a single chain
  */
 export async function buildChainCardData(
   chain: EnrichedChain
 ): Promise<ProtocolCardData | null> {
   console.log(`Building card data for ${chain.name} chain...`)
+  console.log(`  Stablecoin MCap: $${chain.stablecoinMCap.toLocaleString()}`)
+  console.log(`  Revenue 24h: $${chain.revenue24h.toLocaleString()}`)
 
   // Stock metric: Stablecoin MCap
   const stockValue = chain.stablecoinMCap
@@ -93,8 +122,9 @@ export async function buildChainCardData(
     return null
   }
 
-  // Fetch Ethos score from Twitter (with override support)
+  // Fetch Ethos score and reviews from Twitter (with override support)
   let ethosScore = 0
+  let reviewDistribution: ReviewDistribution | undefined
   const correctTwitterHandle = getCorrectTwitterHandle(chain.name, chain.twitter)
 
   if (correctTwitterHandle) {
@@ -103,6 +133,7 @@ export async function buildChainCardData(
     }
 
     try {
+      // Fetch Ethos score
       const twitterData = await getUserScoreFromTwitter(correctTwitterHandle)
       if (twitterData) {
         ethosScore = twitterData.score
@@ -110,11 +141,23 @@ export async function buildChainCardData(
       } else {
         console.warn(`Twitter user ${correctTwitterHandle} not found in Ethos for ${chain.name}`)
       }
+
+      // Fetch reviews for distribution
+      const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 100)
+      if (reviewsData && reviewsData.reviews.length > 0) {
+        reviewDistribution = calculateReviewDistribution(reviewsData.reviews)
+        console.log(`Review distribution for ${chain.name}:`, reviewDistribution)
+      } else {
+        console.warn(`No reviews found for ${chain.name}`)
+        reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
+      }
     } catch (error) {
-      console.warn(`Failed to fetch Ethos score for ${chain.name}:`, error)
+      console.warn(`Failed to fetch Ethos data for ${chain.name}:`, error)
+      reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
     }
   } else {
     console.warn(`No Twitter handle for ${chain.name}`)
+    reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
   }
 
   // Return normalized card data
@@ -131,7 +174,8 @@ export async function buildChainCardData(
     flowMetric: {
       label: "24h App Revenue",
       valueUsd: flowValue
-    }
+    },
+    reviewDistribution
   }
 }
 
@@ -139,7 +183,7 @@ export async function buildChainCardData(
  * Build all chain cards
  */
 export async function buildAllChainCards(
-  minMCap: number = 5_000_000_000
+  minMCap: number = 5_000_000
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic chain card generation...")
 

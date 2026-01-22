@@ -2,7 +2,7 @@
  * Dynamic Protocol Data System
  *
  * Automatically generates protocol cards from DefiLlama data:
- * 1. Fetches all protocols and filters by TVL >= $10B
+ * 1. Fetches all protocols and filters by TVL >= $1B
  * 2. Normalizes categories
  * 3. Fetches aggregated datasets (OI, volume, revenue, etc.)
  * 4. Matches protocols to their stock/flow metrics
@@ -21,8 +21,8 @@ import {
   getCategoryMetrics,
   NormalizedCategory
 } from "./category-normalizer"
-import { getUserScoreFromTwitter } from "./api/ethos"
-import { ProtocolCardData } from "./protocol-data"
+import { getUserScoreFromTwitter, getReviewsByTwitter, EthosReview } from "./api/ethos"
+import { ProtocolCardData, ReviewDistribution } from "./protocol-data"
 import { getCorrectTwitterHandle } from "./twitter-overrides"
 
 /**
@@ -42,7 +42,7 @@ export interface EnrichedProtocol {
  * Fetch and filter protocols by TVL
  */
 export async function fetchFilteredProtocols(
-  minTVL: number = 10_000_000_000
+  minTVL: number = 1_000_000_000
 ): Promise<EnrichedProtocol[]> {
   console.log(`Fetching protocols with TVL >= $${minTVL / 1_000_000_000}B...`)
 
@@ -52,6 +52,11 @@ export async function fetchFilteredProtocols(
   // Filter by TVL
   const filtered = filterByTVL(allProtocols, minTVL)
   console.log(`Found ${filtered.length} protocols with TVL >= $${minTVL / 1_000_000_000}B`)
+
+  // Name overrides for proper capitalization
+  const nameOverrides: Record<string, string> = {
+    'eigencloud': 'EigenCloud',
+  }
 
   // Normalize and enrich
   const enriched: EnrichedProtocol[] = []
@@ -65,9 +70,12 @@ export async function fetchFilteredProtocols(
       continue
     }
 
+    // Apply name override if exists
+    const displayName = nameOverrides[protocol.name.toLowerCase()] || protocol.name
+
     enriched.push({
       id: protocol.id,
-      name: protocol.name,
+      name: displayName,
       slug: protocol.slug,
       category: normalizedCategory,
       tvl: protocol.tvl,
@@ -129,6 +137,33 @@ function getStockMetricValue(
       console.warn(`Unknown stock source: ${source}`)
       return null
   }
+}
+
+/**
+ * Calculate review distribution from reviews
+ */
+function calculateReviewDistribution(reviews: EthosReview[]): ReviewDistribution {
+  const distribution: ReviewDistribution = {
+    negative: 0,
+    neutral: 0,
+    positive: 0,
+  }
+
+  reviews.forEach((review) => {
+    switch (review.reviewScore) {
+      case "NEGATIVE":
+        distribution.negative++
+        break
+      case "NEUTRAL":
+        distribution.neutral++
+        break
+      case "POSITIVE":
+        distribution.positive++
+        break
+    }
+  })
+
+  return distribution
 }
 
 /**
@@ -194,15 +229,15 @@ export async function buildProtocolCardData(
     stockValue = protocol.tvl
   }
 
-  // Get flow metric value
+  // Get flow metric value (optional - protocols can display with just stock metrics)
   const flowValue = getFlowMetricValue(protocol, aggregatedData)
   if (flowValue === null || flowValue === 0) {
-    console.warn(`Failed to get flow metric for ${protocol.name}, skipping protocol`)
-    return null
+    console.warn(`No flow metric for ${protocol.name}, will display with stock metric only`)
   }
 
-  // Fetch Ethos score from Twitter (with override support)
+  // Fetch Ethos score and reviews from Twitter (with override support)
   let ethosScore = 0
+  let reviewDistribution: ReviewDistribution | undefined
   const correctTwitterHandle = getCorrectTwitterHandle(protocol.name, protocol.twitter)
 
   if (correctTwitterHandle) {
@@ -211,6 +246,7 @@ export async function buildProtocolCardData(
     }
 
     try {
+      // Fetch Ethos score
       const twitterData = await getUserScoreFromTwitter(correctTwitterHandle)
       if (twitterData) {
         ethosScore = twitterData.score
@@ -218,11 +254,24 @@ export async function buildProtocolCardData(
       } else {
         console.warn(`Twitter user ${correctTwitterHandle} not found in Ethos for ${protocol.name}`)
       }
+
+      // Fetch reviews for distribution
+      const reviewsData = await getReviewsByTwitter(correctTwitterHandle, 100)
+      if (reviewsData && reviewsData.reviews.length > 0) {
+        reviewDistribution = calculateReviewDistribution(reviewsData.reviews)
+        console.log(`Review distribution for ${protocol.name}:`, reviewDistribution)
+      } else {
+        console.warn(`No reviews found for ${protocol.name}`)
+        // Default to empty distribution
+        reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
+      }
     } catch (error) {
-      console.warn(`Failed to fetch Ethos score for ${protocol.name}:`, error)
+      console.warn(`Failed to fetch Ethos data for ${protocol.name}:`, error)
+      reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
     }
   } else {
     console.warn(`No Twitter handle for ${protocol.name}`)
+    reviewDistribution = { negative: 0, neutral: 0, positive: 0 }
   }
 
   // Return normalized card data
@@ -238,8 +287,9 @@ export async function buildProtocolCardData(
     },
     flowMetric: {
       label: metricsConfig.flow.label,
-      valueUsd: flowValue
-    }
+      valueUsd: flowValue || 0 // Use 0 if no flow data available
+    },
+    reviewDistribution
   }
 }
 
@@ -247,7 +297,7 @@ export async function buildProtocolCardData(
  * Build all protocol cards
  */
 export async function buildAllProtocolCards(
-  minTVL: number = 10_000_000_000
+  minTVL: number = 1_000_000_000
 ): Promise<ProtocolCardData[]> {
   console.log("Starting dynamic protocol card generation...")
 

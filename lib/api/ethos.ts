@@ -461,7 +461,7 @@ export async function getUserByTwitter(
         headers: {
           Accept: "*/*",
         },
-        cache: "no-store", // Client-side compatible
+        next: { revalidate: 300 }, // 5 minute cache
       }
     )
 
@@ -534,7 +534,7 @@ export async function getReviewsByTwitter(
           Accept: "*/*",
         },
         body: JSON.stringify(requestBody),
-        cache: "no-store", // Client-side compatible
+        next: { revalidate: 300 }, // 5 minute cache
       }
     )
 

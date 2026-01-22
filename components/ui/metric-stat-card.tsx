@@ -41,7 +41,7 @@ const MetricStatCard = React.forwardRef<HTMLDivElement, MetricStatCardProps>(
         {...props}
       >
         {/* Main animated value */}
-        <motion.div className="text-5xl font-bold tracking-tighter text-slate-900">
+        <motion.div className="text-5xl font-bold tracking-tighter text-slate-900 dark:text-slate-100">
           {displayValue}
         </motion.div>
 
