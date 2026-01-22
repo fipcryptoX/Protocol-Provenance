@@ -30,6 +30,7 @@ import {
   fetchChainRevenue,
   getHistoricalStablecoinMcapForChain,
   getHistoricalRevenueForChain,
+  fetchChainByName,
 } from "@/lib/api/defillama-chains"
 import {
   getAllReviewsByTwitter,
@@ -159,13 +160,23 @@ export default function ProfilePage() {
           : protocolName
 
         // Fetch all data in parallel for maximum speed
-        const [protocolDetails, metricsData] = await Promise.all([
-          // Fetch protocol details
-          cachedFetch(
-            `protocol-details-${defillamaSlug}`,
-            () => getProtocolDetails(defillamaSlug),
-            900000 // 15 min cache
-          ),
+        const [protocolDetails, chainDetails, metricsData] = await Promise.all([
+          // Fetch protocol details (for protocols only)
+          isChain
+            ? Promise.resolve(null)
+            : cachedFetch(
+                `protocol-details-${defillamaSlug}`,
+                () => getProtocolDetails(defillamaSlug),
+                900000 // 15 min cache
+              ),
+          // Fetch chain details (for chains only)
+          isChain
+            ? cachedFetch(
+                `chain-details-${chainNameForApi}`,
+                () => fetchChainByName(chainNameForApi),
+                900000 // 15 min cache
+              )
+            : Promise.resolve(null),
           // Fetch metrics based on chain vs protocol
           isChain
             ? Promise.all([
@@ -195,6 +206,7 @@ export default function ProfilePage() {
         ])
 
         console.log(`Protocol details:`, protocolDetails)
+        console.log(`Chain details:`, chainDetails)
 
         // Set metrics data
         const [stockMetrics, flowMetrics] = metricsData
@@ -208,13 +220,25 @@ export default function ProfilePage() {
         setStockData(stockMetrics)
         setFlowData(flowMetrics)
 
-        // Extract logo from protocol details
+        // Extract logo from protocol/chain details
         // For chains, use the override system to ensure consistency with dashboard
         let finalLogoUrl: string | null = null
         if (isChain) {
-          // For chains, prioritize our logo override system
-          finalLogoUrl = getCorrectChainLogo(chainNameForApi, protocolDetails?.logo || null)
-          console.log(`Using chain logo override for ${chainNameForApi}: ${finalLogoUrl}`)
+          // For chains, use chain data with fallback to DefiLlama CDN
+          const chainLogo = chainDetails?.logo || null
+
+          if (!chainLogo) {
+            // Generate DefiLlama CDN URL from chain name as fallback
+            const normalizedName = chainNameForApi.toLowerCase().replace(/\s+/g, '')
+            const fallbackLogo = `https://icons.llama.fi/${normalizedName}.jpg`
+            console.log(`No chain logo from API, using DefiLlama CDN: ${fallbackLogo}`)
+            finalLogoUrl = getCorrectChainLogo(chainNameForApi, fallbackLogo)
+          } else {
+            console.log(`Chain logo from API: ${chainLogo}`)
+            finalLogoUrl = getCorrectChainLogo(chainNameForApi, chainLogo)
+          }
+
+          console.log(`Final chain logo for ${chainNameForApi}: ${finalLogoUrl}`)
         } else {
           // For protocols, use DeFiLlama's logo
           finalLogoUrl = protocolDetails?.logo || null
@@ -230,11 +254,15 @@ export default function ProfilePage() {
 
         // Determine which Twitter username to use:
         // 1. First priority: Centralized Twitter overrides
-        // 2. Second: Twitter from DeFiLlama API
+        // 2. Second: Twitter from DeFiLlama API (chains or protocols)
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
+        const twitterFromApi = isChain
+          ? chainDetails?.twitter
+          : protocolDetails?.twitter
+
         const twitterUsername = getCorrectTwitterHandle(
           protocolName.toLowerCase(),
-          protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
+          twitterFromApi || protocolConfig?.ethos.twitterUsername || null
         )
 
         // Fetch Ethos reviews asynchronously in background

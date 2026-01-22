@@ -93,6 +93,33 @@ export async function fetchAllChains(): Promise<DefiLlamaChain[]> {
 }
 
 /**
+ * Fetch a single chain by name from DefiLlama
+ */
+export async function fetchChainByName(chainName: string): Promise<DefiLlamaChain | null> {
+  console.log(`Fetching chain data for ${chainName}...`)
+
+  try {
+    const allChains = await fetchAllChains()
+
+    // Find the chain by name (case-insensitive)
+    const chain = allChains.find(
+      c => c.name.toLowerCase() === chainName.toLowerCase()
+    )
+
+    if (!chain) {
+      console.warn(`Chain not found in DefiLlama: ${chainName}`)
+      return null
+    }
+
+    console.log(`Found chain: ${chain.name}, logo: ${chain.logo || 'none'}, gecko_id: ${chain.gecko_id || 'none'}`)
+    return chain
+  } catch (error) {
+    console.error(`Error fetching chain ${chainName}:`, error)
+    return null
+  }
+}
+
+/**
  * Fetch revenue for a specific chain
  */
 async function fetchChainSpecificRevenue(chainName: string): Promise<number> {
