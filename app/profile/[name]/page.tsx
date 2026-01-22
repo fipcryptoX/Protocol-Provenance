@@ -88,7 +88,7 @@ export default function ProfilePage() {
         console.log(`Fetching data for ${protocolName}, using DeFiLlama slug: ${defillamaSlug}`)
 
         // Detect if this is a chain (common chain names)
-        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis', 'linea', 'sui', 'injective', 'stellar', 'tezos', 'near', 'cardano', 'stacks', 'ton', 'icp', 'movement']
+        const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis', 'linea', 'sui', 'injective', 'stellar', 'tezos', 'near', 'cardano', 'stacks', 'ton', 'icp', 'movement', 'scroll', 'cronos', 'sei', 'aptos', 'canto', 'manta', 'manta atlantic', 'mode', 'zora', 'moonriver', 'arbitrum nova', 'gnosis', 'xdai', 'celo', 'aurora', 'harmony', 'moonbeam', 'zksync era', 'zksync', 'taiko', 'mantle', 'x layer', 'polygon zkevm', 'fraxtal', 'boba', 'zetachain', 'core']
         const isChain = commonChains.includes(protocolName.toLowerCase())
 
         // Chain name mapping for DefiLlama API (needs proper capitalization)
@@ -124,6 +124,33 @@ export default function ProfilePage() {
           'ton': 'TON',
           'icp': 'ICP',
           'movement': 'Movement',
+          'scroll': 'Scroll',
+          'cronos': 'Cronos',
+          'sei': 'Sei',
+          'aptos': 'Aptos',
+          'canto': 'Canto',
+          'manta': 'Manta',
+          'manta atlantic': 'Manta Atlantic',
+          'mode': 'Mode',
+          'zora': 'Zora',
+          'moonriver': 'Moonriver',
+          'arbitrum nova': 'Arbitrum Nova',
+          'gnosis': 'xDai',
+          'xdai': 'xDai',
+          'celo': 'Celo',
+          'aurora': 'Aurora',
+          'harmony': 'Harmony',
+          'moonbeam': 'Moonbeam',
+          'zksync era': 'zkSync Era',
+          'zksync': 'zkSync Era',
+          'taiko': 'Taiko',
+          'mantle': 'Mantle',
+          'x layer': 'X Layer',
+          'polygon zkevm': 'Polygon zkEVM',
+          'fraxtal': 'Fraxtal',
+          'boba': 'Boba',
+          'zetachain': 'ZetaChain',
+          'core': 'CORE',
         }
 
         // Get the properly formatted chain name for API calls
@@ -393,7 +420,7 @@ export default function ProfilePage() {
   }, [reviews])
 
   // Get metric labels based on whether it's a chain or protocol
-  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis', 'linea', 'sui', 'injective', 'stellar', 'tezos', 'near', 'cardano', 'stacks', 'ton', 'icp', 'movement']
+  const commonChains = ['base', 'ethereum', 'solana', 'tron', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'bsc', 'fantom', 'blast', 'ronin', 'berachain', 'sonic', 'monad', 'hyperliquid', 'katana', 'kava', 'okexchain', 'metis', 'linea', 'sui', 'injective', 'stellar', 'tezos', 'near', 'cardano', 'stacks', 'ton', 'icp', 'movement', 'scroll', 'cronos', 'sei', 'aptos', 'canto', 'manta', 'manta atlantic', 'mode', 'zora', 'moonriver', 'arbitrum nova', 'gnosis', 'xdai', 'celo', 'aurora', 'harmony', 'moonbeam', 'zksync era', 'zksync', 'taiko', 'mantle', 'x layer', 'polygon zkevm', 'fraxtal', 'boba', 'zetachain', 'core']
   const isChain = commonChains.includes(protocolName.toLowerCase())
 
   const stockLabel = isChain ? "Stablecoin MCap" : "TVL"
