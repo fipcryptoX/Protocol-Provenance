@@ -471,9 +471,12 @@ export async function getUserByTwitter(
       // Handle rate limiting with exponential backoff
       if (response.status === 429) {
         if (attempt < retries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 8000) // Max 8 seconds
+          // More aggressive backoff: 5s, 10s, 20s with jitter
+          const baseDelay = 5000 * Math.pow(2, attempt)
+          const jitter = Math.random() * 2000 // Add 0-2s random jitter
+          const delay = Math.min(baseDelay + jitter, 30000) // Max 30 seconds
           console.warn(
-            `Rate limited for @${twitterUsername}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`
+            `Rate limited for @${twitterUsername}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${retries})`
           )
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
@@ -647,9 +650,12 @@ async function fetchReviewsWithUserkey(
       // Handle rate limiting with exponential backoff
       if (response.status === 429) {
         if (attempt < retries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 8000) // Max 8 seconds
+          // More aggressive backoff: 5s, 10s, 20s with jitter
+          const baseDelay = 5000 * Math.pow(2, attempt)
+          const jitter = Math.random() * 2000 // Add 0-2s random jitter
+          const delay = Math.min(baseDelay + jitter, 30000) // Max 30 seconds
           console.warn(
-            `Rate limited fetching reviews for @${twitterUsername}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`
+            `Rate limited fetching reviews for @${twitterUsername}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${retries})`
           )
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
@@ -720,8 +726,11 @@ async function fetchReviewsWithUserkey(
       }
     } catch (error) {
       if (attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
-        console.warn(`Error fetching reviews for @${twitterUsername}, retrying in ${delay}ms:`, error)
+        // More aggressive backoff: 5s, 10s, 20s with jitter
+        const baseDelay = 5000 * Math.pow(2, attempt)
+        const jitter = Math.random() * 2000 // Add 0-2s random jitter
+        const delay = Math.min(baseDelay + jitter, 30000) // Max 30 seconds
+        console.warn(`Error fetching reviews for @${twitterUsername}, retrying in ${Math.round(delay)}ms:`, error)
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
