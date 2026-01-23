@@ -197,12 +197,22 @@ export async function buildAllChainCards(
   // Step 1: Fetch and filter chains
   const chains = await fetchFilteredChains(minMCap)
 
-  // Step 2: Build card data for each chain
-  const cardDataPromises = chains.map(chain =>
-    buildChainCardData(chain)
-  )
+  // Step 2: Build card data for each chain sequentially with delays
+  // This prevents overwhelming the Ethos API with parallel requests
+  const cardDataResults: (ProtocolCardData | null)[] = []
 
-  const cardDataResults = await Promise.all(cardDataPromises)
+  for (let i = 0; i < chains.length; i++) {
+    const chain = chains[i]
+    console.log(`Building card ${i + 1}/${chains.length} for ${chain.name}...`)
+
+    const cardData = await buildChainCardData(chain)
+    cardDataResults.push(cardData)
+
+    // Add a small delay between chains to avoid rate limiting (except after the last one)
+    if (i < chains.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500)) // 500ms delay
+    }
+  }
 
   // Filter out nulls
   const validCards = cardDataResults.filter((card): card is ProtocolCardData => card !== null)
