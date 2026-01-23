@@ -640,15 +640,26 @@ export async function getAllReviewsByTwitter(
   let total = 0
 
   try {
+    // Fetch userkey ONCE to avoid rate limiting
+    const user = await getUserByTwitter(twitterUsername)
+
+    if (!user || !user.userkeys || user.userkeys.length === 0) {
+      console.warn(`Cannot fetch reviews: no userkey for @${twitterUsername}`)
+      return []
+    }
+
+    const userkey = user.userkeys[0]
+    console.log(`Using userkey: ${userkey} for @${twitterUsername}`)
+
     // Fetch first batch to get total count
-    const firstBatch = await getReviewsByTwitter(twitterUsername, limit, offset)
+    const firstBatch = await fetchReviewsWithUserkey(userkey, limit, offset, twitterUsername)
     allReviews.push(...firstBatch.reviews)
     total = firstBatch.total
     offset += limit
 
     // Continue fetching until we have all reviews or hit maxReviews
     while (offset < total && allReviews.length < maxReviews) {
-      const batch = await getReviewsByTwitter(twitterUsername, limit, offset)
+      const batch = await fetchReviewsWithUserkey(userkey, limit, offset, twitterUsername)
       allReviews.push(...batch.reviews)
       offset += limit
 
@@ -668,5 +679,102 @@ export async function getAllReviewsByTwitter(
       error
     )
     return allReviews // Return what we have so far
+  }
+}
+
+/**
+ * Helper function to fetch reviews using a userkey directly
+ * Avoids repeated userkey lookups
+ */
+async function fetchReviewsWithUserkey(
+  userkey: string,
+  limit: number,
+  offset: number,
+  twitterUsername: string
+): Promise<{ reviews: EthosReview[]; total: number }> {
+  try {
+    const requestBody = {
+      userkey,
+      filter: ["review"],
+      limit,
+      offset,
+      excludeSpam: true,
+    }
+
+    const response = await fetch(
+      `${ETHOS_API_V2_BASE}/activities/profile/received`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "*/*",
+        },
+        body: JSON.stringify(requestBody),
+        next: { revalidate: 300 }, // 5 minute cache
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to fetch reviews for @${twitterUsername}: ${response.status}`
+      )
+      return { reviews: [], total: 0 }
+    }
+
+    const data: EthosActivitiesResponse = await response.json()
+
+    // Filter and transform review activities
+    const reviews: EthosReview[] = data.values
+      .filter((activity) => {
+        const isReview = activity.type === "review"
+        const hasContent = !!(activity.data?.comment || activity.data?.metadata)
+        return isReview && hasContent
+      })
+      .map((activity) => {
+        // Extract content from data.comment and/or data.metadata.description
+        let content = activity.data?.comment || ""
+
+        // Try to parse metadata for full description
+        if (activity.data?.metadata) {
+          try {
+            const metadata = JSON.parse(activity.data.metadata)
+            if (metadata.description) {
+              content = metadata.description
+            }
+          } catch (e) {
+            // If metadata parsing fails, stick with comment
+          }
+        }
+
+        // Map score field to reviewScore
+        const scoreMap: Record<string, ReviewSentiment> = {
+          positive: "POSITIVE",
+          neutral: "NEUTRAL",
+          negative: "NEGATIVE",
+        }
+        const reviewScore = scoreMap[activity.data?.score?.toLowerCase() || ""] || "NEUTRAL"
+
+        return {
+          id: activity.data?.id?.toString() || `${activity.timestamp}-${activity.author?.profileId}`,
+          createdAt: new Date(activity.timestamp * 1000).toISOString(),
+          content,
+          reviewScore,
+          author: {
+            id: activity.author?.profileId || 0,
+            displayName: activity.author?.name || activity.author?.username,
+            username: activity.author?.username,
+            avatarUrl: activity.author?.avatar,
+            score: activity.author?.score || 0,
+          },
+        }
+      })
+
+    return {
+      reviews,
+      total: data.total,
+    }
+  } catch (error) {
+    console.error(`Error fetching reviews for @${twitterUsername}:`, error)
+    return { reviews: [], total: 0 }
   }
 }
