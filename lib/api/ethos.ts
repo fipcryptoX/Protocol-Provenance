@@ -612,97 +612,122 @@ export async function getAllReviewsByTwitter(
 
 /**
  * Helper function to fetch reviews using a userkey directly
- * Avoids repeated userkey lookups
+ * Avoids repeated userkey lookups, with retry logic for rate limits
  */
 async function fetchReviewsWithUserkey(
   userkey: string,
   limit: number,
   offset: number,
-  twitterUsername: string
+  twitterUsername: string,
+  retries: number = 3
 ): Promise<{ reviews: EthosReview[]; total: number }> {
-  try {
-    const requestBody = {
-      userkey,
-      filter: ["review"],
-      limit,
-      offset,
-      excludeSpam: true,
-    }
-
-    const response = await fetch(
-      `${ETHOS_API_V2_BASE}/activities/profile/received`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "*/*",
-        },
-        body: JSON.stringify(requestBody),
-        next: { revalidate: 300 }, // 5 minute cache
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const requestBody = {
+        userkey,
+        filter: ["review"],
+        limit,
+        offset,
+        excludeSpam: true,
       }
-    )
 
-    if (!response.ok) {
-      console.warn(
-        `Failed to fetch reviews for @${twitterUsername}: ${response.status}`
+      const response = await fetch(
+        `${ETHOS_API_V2_BASE}/activities/profile/received`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "*/*",
+          },
+          body: JSON.stringify(requestBody),
+          next: { revalidate: 300 }, // 5 minute cache
+        }
       )
+
+      // Handle rate limiting with exponential backoff
+      if (response.status === 429) {
+        if (attempt < retries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 8000) // Max 8 seconds
+          console.warn(
+            `Rate limited fetching reviews for @${twitterUsername}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`
+          )
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        } else {
+          console.error(`Rate limit exceeded for reviews @${twitterUsername} after ${retries} retries`)
+          return { reviews: [], total: 0 }
+        }
+      }
+
+      if (!response.ok) {
+        console.warn(
+          `Failed to fetch reviews for @${twitterUsername}: ${response.status}`
+        )
+        return { reviews: [], total: 0 }
+      }
+
+      const data: EthosActivitiesResponse = await response.json()
+
+      // Filter and transform review activities
+      const reviews: EthosReview[] = data.values
+        .filter((activity) => {
+          const isReview = activity.type === "review"
+          const hasContent = !!(activity.data?.comment || activity.data?.metadata)
+          return isReview && hasContent
+        })
+        .map((activity) => {
+          // Extract content from data.comment and/or data.metadata.description
+          let content = activity.data?.comment || ""
+
+          // Try to parse metadata for full description
+          if (activity.data?.metadata) {
+            try {
+              const metadata = JSON.parse(activity.data.metadata)
+              if (metadata.description) {
+                content = metadata.description
+              }
+            } catch (e) {
+              // If metadata parsing fails, stick with comment
+            }
+          }
+
+          // Map score field to reviewScore
+          const scoreMap: Record<string, ReviewSentiment> = {
+            positive: "POSITIVE",
+            neutral: "NEUTRAL",
+            negative: "NEGATIVE",
+          }
+          const reviewScore = scoreMap[activity.data?.score?.toLowerCase() || ""] || "NEUTRAL"
+
+          return {
+            id: activity.data?.id?.toString() || `${activity.timestamp}-${activity.author?.profileId}`,
+            createdAt: new Date(activity.timestamp * 1000).toISOString(),
+            content,
+            reviewScore,
+            author: {
+              id: activity.author?.profileId || 0,
+              displayName: activity.author?.name || activity.author?.username,
+              username: activity.author?.username,
+              avatarUrl: activity.author?.avatar,
+              score: activity.author?.score || 0,
+            },
+          }
+        })
+
+      return {
+        reviews,
+        total: data.total,
+      }
+    } catch (error) {
+      if (attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
+        console.warn(`Error fetching reviews for @${twitterUsername}, retrying in ${delay}ms:`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      console.error(`Error fetching reviews for @${twitterUsername}:`, error)
       return { reviews: [], total: 0 }
     }
-
-    const data: EthosActivitiesResponse = await response.json()
-
-    // Filter and transform review activities
-    const reviews: EthosReview[] = data.values
-      .filter((activity) => {
-        const isReview = activity.type === "review"
-        const hasContent = !!(activity.data?.comment || activity.data?.metadata)
-        return isReview && hasContent
-      })
-      .map((activity) => {
-        // Extract content from data.comment and/or data.metadata.description
-        let content = activity.data?.comment || ""
-
-        // Try to parse metadata for full description
-        if (activity.data?.metadata) {
-          try {
-            const metadata = JSON.parse(activity.data.metadata)
-            if (metadata.description) {
-              content = metadata.description
-            }
-          } catch (e) {
-            // If metadata parsing fails, stick with comment
-          }
-        }
-
-        // Map score field to reviewScore
-        const scoreMap: Record<string, ReviewSentiment> = {
-          positive: "POSITIVE",
-          neutral: "NEUTRAL",
-          negative: "NEGATIVE",
-        }
-        const reviewScore = scoreMap[activity.data?.score?.toLowerCase() || ""] || "NEUTRAL"
-
-        return {
-          id: activity.data?.id?.toString() || `${activity.timestamp}-${activity.author?.profileId}`,
-          createdAt: new Date(activity.timestamp * 1000).toISOString(),
-          content,
-          reviewScore,
-          author: {
-            id: activity.author?.profileId || 0,
-            displayName: activity.author?.name || activity.author?.username,
-            username: activity.author?.username,
-            avatarUrl: activity.author?.avatar,
-            score: activity.author?.score || 0,
-          },
-        }
-      })
-
-    return {
-      reviews,
-      total: data.total,
-    }
-  } catch (error) {
-    console.error(`Error fetching reviews for @${twitterUsername}:`, error)
-    return { reviews: [], total: 0 }
   }
+  return { reviews: [], total: 0 }
 }
