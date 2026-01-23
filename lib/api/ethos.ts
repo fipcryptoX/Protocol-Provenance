@@ -471,10 +471,10 @@ export async function getUserByTwitter(
       // Handle rate limiting with exponential backoff
       if (response.status === 429) {
         if (attempt < retries) {
-          // More aggressive backoff: 5s, 10s, 20s with jitter
-          const baseDelay = 5000 * Math.pow(2, attempt)
-          const jitter = Math.random() * 2000 // Add 0-2s random jitter
-          const delay = Math.min(baseDelay + jitter, 30000) // Max 30 seconds
+          // Shorter delays for userkey lookup: 2s, 4s, 8s (better for parallel dashboard builds)
+          const baseDelay = 2000 * Math.pow(2, attempt)
+          const jitter = Math.random() * 1000 // Add 0-1s random jitter
+          const delay = Math.min(baseDelay + jitter, 10000) // Max 10 seconds
           console.warn(
             `Rate limited for @${twitterUsername}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${retries})`
           )
@@ -507,8 +507,11 @@ export async function getUserByTwitter(
       return data
     } catch (error) {
       if (attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
-        console.warn(`Error fetching user for @${twitterUsername}, retrying in ${delay}ms:`, error)
+        // Match the same delays as rate limit handling
+        const baseDelay = 2000 * Math.pow(2, attempt)
+        const jitter = Math.random() * 1000
+        const delay = Math.min(baseDelay + jitter, 10000)
+        console.warn(`Error fetching user for @${twitterUsername}, retrying in ${Math.round(delay)}ms:`, error)
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
