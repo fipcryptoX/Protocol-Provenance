@@ -291,7 +291,7 @@ export async function getHistoricalStablecoinMcapForChain(
   try {
     const response = await fetch(
       `https://stablecoins.llama.fi/stablecoincharts/${encodeURIComponent(chainName)}`,
-      { cache: "no-store" }
+      { next: { revalidate: 120 } }
     )
 
     if (!response.ok) {
@@ -326,7 +326,7 @@ export async function getHistoricalRevenueForChain(
   try {
     const response = await fetch(
       `https://api.llama.fi/overview/fees/${encodeURIComponent(chainName)}`,
-      { cache: "no-store" }
+      { next: { revalidate: 120 } }
     )
 
     if (!response.ok) {
@@ -336,14 +336,15 @@ export async function getHistoricalRevenueForChain(
 
     const data = await response.json()
 
-    // Extract totalDataChart which contains [timestamp, value] pairs
-    if (!data.totalDataChart || !Array.isArray(data.totalDataChart)) {
-      console.warn(`No totalDataChart found for ${chainName}`)
+    // Extract totalRevenueDataChart (app/protocol revenue) instead of totalDataChart (total fees)
+    // This gives us the revenue that goes to the chain, not total fees paid by users
+    if (!data.totalRevenueDataChart || !Array.isArray(data.totalRevenueDataChart)) {
+      console.warn(`No totalRevenueDataChart found for ${chainName}`)
       return []
     }
 
     // Convert [timestamp, value] pairs to objects and calculate 7-day rolling sum
-    const dailyData = data.totalDataChart.map(([timestamp, value]: [number, number]) => ({
+    const dailyData = data.totalRevenueDataChart.map(([timestamp, value]: [number, number]) => ({
       timestamp,
       value,
     }))
