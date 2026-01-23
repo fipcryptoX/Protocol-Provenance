@@ -526,7 +526,7 @@ export async function getReviewsByTwitter(
     console.log(`Fetching reviews with body:`, JSON.stringify(requestBody, null, 2))
 
     const response = await fetch(
-      `${ETHOS_API_V2_BASE}/activities/profile/received`,
+      `${ETHOS_API_V2_BASE}/activities/profile/given`,
       {
         method: "POST",
         headers: {
