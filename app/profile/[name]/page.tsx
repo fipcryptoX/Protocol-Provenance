@@ -265,7 +265,15 @@ export default function ProfilePage() {
         // 2. If no override, use Twitter from DeFiLlama API
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
         const apiTwitterHandle = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
-        const twitterUsername = getCorrectTwitterHandle(protocolName, apiTwitterHandle)
+
+        // For chains, use the chain name from the API (not the URL parameter) to match dashboard behavior
+        const nameForTwitterLookup = (isChain && protocolDetails?.name)
+          ? protocolDetails.name
+          : protocolName
+
+        console.log(`[DEBUG] Protocol/Chain: ${protocolName}, isChain: ${isChain}, Name for lookup: ${nameForTwitterLookup}, API Twitter: ${apiTwitterHandle}`)
+        const twitterUsername = getCorrectTwitterHandle(nameForTwitterLookup, apiTwitterHandle)
+        console.log(`[DEBUG] Final Twitter username after overrides: ${twitterUsername}`)
 
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
