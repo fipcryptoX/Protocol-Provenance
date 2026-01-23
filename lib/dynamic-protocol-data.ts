@@ -324,12 +324,22 @@ export async function buildAllProtocolCards(
   // Step 2: Fetch all aggregated datasets in parallel
   const aggregatedData = await fetchAllData()
 
-  // Step 3: Build card data for each protocol
-  const cardDataPromises = protocols.map(protocol =>
-    buildProtocolCardData(protocol, aggregatedData)
-  )
+  // Step 3: Build card data for each protocol sequentially with delays
+  // This prevents overwhelming the Ethos API with parallel requests
+  const cardDataResults: (ProtocolCardData | null)[] = []
 
-  const cardDataResults = await Promise.all(cardDataPromises)
+  for (let i = 0; i < protocols.length; i++) {
+    const protocol = protocols[i]
+    console.log(`Building card ${i + 1}/${protocols.length} for ${protocol.name}...`)
+
+    const cardData = await buildProtocolCardData(protocol, aggregatedData)
+    cardDataResults.push(cardData)
+
+    // Add a small delay between protocols to avoid rate limiting (except after the last one)
+    if (i < protocols.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500)) // 500ms delay
+    }
+  }
 
   // Filter out nulls
   const validCards = cardDataResults.filter((card): card is ProtocolCardData => card !== null)

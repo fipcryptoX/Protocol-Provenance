@@ -30,6 +30,7 @@ import {
   fetchChainRevenue,
   getHistoricalStablecoinMcapForChain,
   getHistoricalRevenueForChain,
+  getChainByName,
 } from "@/lib/api/defillama-chains"
 import {
   getAllReviewsByTwitter,
@@ -39,6 +40,7 @@ import { cachedFetch } from "@/lib/cache"
 import { CATEGORY_METRICS } from "@/types"
 import { PROTOCOLS } from "@/lib/protocol-config"
 import { getCorrectTwitterHandle } from "@/lib/twitter-overrides"
+import { getCorrectChainLogo } from "@/lib/chain-logo-overrides"
 
 export default function ProfilePage() {
   const params = useParams()
@@ -192,9 +194,13 @@ export default function ProfilePage() {
 
         // Fetch all data in parallel for maximum speed
         const [protocolDetails, metricsData] = await Promise.all([
-          // Fetch protocol details (skip for chains as they don't have protocol data)
+          // Fetch protocol/chain details
           isChain
-            ? Promise.resolve(null)
+            ? cachedFetch(
+                `chain-details-${chainNameForApi}`,
+                () => getChainByName(chainNameForApi),
+                900000 // 15 min cache
+              )
             : cachedFetch(
                 `protocol-details-${defillamaSlug}`,
                 () => getProtocolDetails(defillamaSlug),
@@ -242,10 +248,13 @@ export default function ProfilePage() {
         setStockData(stockMetrics)
         setFlowData(flowMetrics)
 
-        // Extract logo from protocol details
+        // Extract logo from protocol/chain details (with overrides for chains)
         if (protocolDetails?.logo) {
-          setLogoUrl(protocolDetails.logo)
-          console.log(`Logo URL: ${protocolDetails.logo}`)
+          const logoToUse = isChain
+            ? getCorrectChainLogo(protocolName, protocolDetails.logo)
+            : protocolDetails.logo
+          setLogoUrl(logoToUse)
+          console.log(`Logo URL: ${logoToUse}`)
         }
 
         // Chart data is ready - show the page!
@@ -256,7 +265,15 @@ export default function ProfilePage() {
         // 2. If no override, use Twitter from DeFiLlama API
         // 3. Fallback: Twitter from protocol config (for manually configured protocols)
         const apiTwitterHandle = protocolDetails?.twitter || protocolConfig?.ethos.twitterUsername || null
-        const twitterUsername = getCorrectTwitterHandle(protocolName, apiTwitterHandle)
+
+        // For chains, use the chain name from the API (not the URL parameter) to match dashboard behavior
+        const nameForTwitterLookup = (isChain && protocolDetails?.name)
+          ? protocolDetails.name
+          : protocolName
+
+        console.log(`[DEBUG] Protocol/Chain: ${protocolName}, isChain: ${isChain}, Name for lookup: ${nameForTwitterLookup}, API Twitter: ${apiTwitterHandle}`)
+        const twitterUsername = getCorrectTwitterHandle(nameForTwitterLookup, apiTwitterHandle)
+        console.log(`[DEBUG] Final Twitter username after overrides: ${twitterUsername}`)
 
         // Fetch Ethos reviews asynchronously in background
         // This doesn't block chart rendering
