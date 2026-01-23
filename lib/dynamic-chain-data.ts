@@ -44,6 +44,7 @@ export async function fetchFilteredChains(
   // Chains to exclude from the dashboard
   const excludedChains = new Set([
     'fantom',
+    'x layer',
   ])
 
   // Fetch all chains
